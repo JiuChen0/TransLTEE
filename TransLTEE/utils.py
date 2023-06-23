@@ -1,11 +1,10 @@
-#包含各种工具函数，比如模型保存和加载、计算评价指标等。
 import torch
 
 def to_device(data, device):
     """
-    将张量移动到指定的设备上。
-    data: 需要移动的数据，可以是单个张量，也可以是张量的列表或字典。
-    device: 目标设备。
+    Move tensors to the specified device.
+    data: Data to be moved. It can be a single tensor or a list or dictionary of tensors.
+    device: Target device.
     """
     if torch.is_tensor(data):
         return data.to(device)
@@ -18,9 +17,9 @@ def to_device(data, device):
 
 def compute_accuracy(output, target):
     """
-    计算分类精度。
-    output: 模型的输出，shape=[batch_size, num_classes]。
-    target: 真实的标签，shape=[batch_size]。
+    Compute classification accuracy.
+    output: Output from the model, shape=[batch_size, num_classes].
+    target: Actual labels, shape=[batch_size].
     """
     with torch.no_grad():
         pred = torch.argmax(output, dim=1)

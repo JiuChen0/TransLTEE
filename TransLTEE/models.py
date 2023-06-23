@@ -1,4 +1,3 @@
-#包含了所有的模型，如DoubleHeadRNN、TransformerEncoder、MyModel
 import torch
 from torch import nn
 from transformers import TransformerModel
@@ -6,84 +5,84 @@ from losses import WassersteinLoss
 
 class DoubleHeadRNN(nn.Module):
     """ 
-    双头RNN结构
+    Double-headed RNN structure
     """
     def __init__(self, input_dim, hidden_dim):
         """
-        构造函数
-        input_dim: 输入维度
-        hidden_dim: 隐藏层维度
+        Constructor
+        input_dim: Input dimension
+        hidden_dim: Hidden layer dimension
         """
         super(DoubleHeadRNN, self).__init__()
-        # 定义两个RNN结构
+        # Define two RNN structures
         self.rnn0 = nn.RNN(input_dim, hidden_dim)
         self.rnn1 = nn.RNN(input_dim, hidden_dim)
     
     def forward(self, x):
         """
-        前向传播
-        x: 输入数据
+        Forward propagation
+        x: Input data
         """
-        # 对输入数据进行处理，得到两个RNN的输出
+        # Process the input data to obtain the outputs of the two RNNs
         output0, _ = self.rnn0(x)
         output1, _ = self.rnn1(x)
         return output0, output1
 
 class TransformerEncoder(nn.Module):
     """
-    Transformer编码器结构
+    Transformer encoder structure
     """
     def __init__(self, hidden_dim):
         """
-        构造函数
-        hidden_dim: 隐藏层维度
+        Constructor
+        hidden_dim: Hidden layer dimension
         """
         super(TransformerEncoder, self).__init__()
-        # 使用预训练的bert作为Transformer编码器
+        # Use pre-trained bert as Transformer encoder
         self.transformer = TransformerModel.from_pretrained('bert-base-uncased')
     
     def forward(self, x):
         """
-        前向传播
-        x: 输入数据
+        Forward propagation
+        x: Input data
         """
-        # 对输入数据进行处理，得到Transformer编码器的输出
+        # Process the input data to obtain the output of the Transformer encoder
         outputs = self.transformer(x)
         return outputs.last_hidden_state
 
 class MyModel(nn.Module):
     """
-    我们的模型结构,包含双头RNN和Transformer编码器
+    Our model structure, including the double-headed RNN and Transformer encoder
     """
     def __init__(self, input_dim, hidden_dim):
         """
-        构造函数
-        input_dim: 输入维度
-        hidden_dim: 隐藏层维度
+        Constructor
+        input_dim: Input dimension
+        hidden_dim: Hidden layer dimension
         """
         super(MyModel, self).__init__()
-        # 定义双头RNN
+        # Define the double-headed RNN
         self.double_head_rnn = DoubleHeadRNN(input_dim, hidden_dim)
-        # 定义Transformer编码器
+        # Define the Transformer encoder
         self.transformer_encoder = TransformerEncoder(hidden_dim)
-        # 定义损失函数，这里使用Wasserstein距离
+        # Define the loss function, here we use the Wasserstein distance
         self.criterion = WassersteinLoss()
     
     def forward(self, x):
         """
-        前向传播
-        x: 输入数据
+        Forward propagation
+        x: Input data
         """
-        # 获得双头RNN的输出
+        # Get the outputs of the double-headed RNN
         output0, output1 = self.double_head_rnn(x)
-        # 获得Transformer编码器的输出
+        # Get the output of the Transformer encoder
         encoded0 = self.transformer_encoder(output0)
         encoded1 = self.transformer_encoder(output1)
-        # 计算两个输出之间的Wasserstein距离，作为模型的损失
+        # Calculate the Wasserstein distance between the two outputs as the model's loss
         loss = self.criterion(encoded0, encoded1)
         return loss
 
 
 ###################
-#没有实现注意力机制，以及将多个损失函数叠加的部分
+# This code does not implement the attention mechanism or the stacking of multiple loss functions
 ###################
