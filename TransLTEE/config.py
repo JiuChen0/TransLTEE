@@ -9,7 +9,7 @@ class Config:
         self.batch_size = 64  # 批次大小
         self.learning_rate = 0.001  # 学习率
         self.weight_decay = 0.0001  # 权重衰减
-        self.save_dir = './home'  # 模型保存路径
+        self.save_dir = './checkpoints'  # 模型保存路径
 
         # 模型参数
         self.input_dim = 128  # 输入维度
