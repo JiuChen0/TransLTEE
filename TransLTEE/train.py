@@ -1,64 +1,31 @@
-import torch
-from utils import to_device, compute_accuracy
-from losses import compute_train_loss, compute_valid_loss  # Make sure this function is defined in losses.py
+from torch.utils.data import DataLoader
+from models import MyModel
+from losses import compute_train_loss, compute_valid_loss
+from data import get_dataloader
+from config import Config
 
-def train(model, train_dataloader, valid_dataloader, criterion, optimizer, config):
-    """
-    Train the model
-    model: The model object
-    train_dataloader: Training data loader
-    valid_dataloader: Validation data loader
-    criterion: Loss function
-    optimizer: Optimizer
-    config: Configuration object
-    """
+def train():
+    config = Config()
+    train_loader = get_dataloader('train.csv', config.batch_size)
+    valid_loader = get_dataloader('valid.csv', config.batch_size)
 
-    # Move the model to the device
-    device = config.device
-    model.to(device)
-
-    for epoch in range(config.num_epochs):
-        # Set the model to training mode
+    model = MyModel(config.input_dim, config.hidden_dim)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
+    
+    for epoch in range(config.epochs):
+        # Training
         model.train()
-        train_loss = 0.0
-
-        for batch in train_dataloader:
-            # Move data to the device
-            batch = to_device(batch, device)
-
-            # Compute loss
-            loss = compute_train_loss(model, batch, criterion)
-
-            # Backpropagation and optimization
-            optimizer.zero_grad()
+        for batch in train_loader:
+            loss = compute_train_loss(model, batch, config.loss_weights)
             loss.backward()
             optimizer.step()
+            optimizer.zero_grad()
 
-            train_loss += loss.item()
-
-        train_loss /= len(train_dataloader)
-
-        # Evaluate the model on the validation set
+        # Validation
         model.eval()
-        valid_loss = 0.0
         with torch.no_grad():
-            for batch in valid_dataloader:
-                # Move data to the device
-                batch = to_device(batch, device)
+            for batch in valid_loader:
+                loss = compute_valid_loss(model, batch, config.loss_weights)
 
-                # Compute loss
-                loss = compute_valid_loss(model, batch, criterion)
-
-                valid_loss += loss.item()
-
-        valid_loss /= len(valid_dataloader)
-
-        # Print training and validation loss
-        print(f'Epoch {epoch+1}/{config.num_epochs}')
-        print(f'Train Loss: {train_loss:.4f}')
-        print(f'Valid Loss: {valid_loss:.4f}')
-
-    return model
-###################
-# You may need to modify the compute_train_loss and compute_valid_loss functions according to your actual needs.
-###################
+        # Save the model
+        torch.save(model.state_dict(), f'{config.save_dir}/model_{epoch}.pth')

@@ -3,6 +3,15 @@ from torch import nn
 from transformers import TransformerModel
 from losses import WassersteinLoss
 
+class SurrogateRepresentation(nn.Module):
+    def __init__(self, dim_in):
+        super(SurrogateRepresentation, self).__init__()
+        self.phi = nn.Linear(dim_in, dim_in)
+        self.activation = nn.ReLU()
+
+    def forward(self, x):
+        return self.activation(self.phi(x))
+
 class DoubleHeadRNN(nn.Module):
     """ 
     Double-headed RNN structure
@@ -54,33 +63,18 @@ class MyModel(nn.Module):
     """
     Our model structure, including the double-headed RNN and Transformer encoder
     """
-    def __init__(self, input_dim, hidden_dim):
-        """
-        Constructor
-        input_dim: Input dimension
-        hidden_dim: Hidden layer dimension
-        """
+    def __init__(self, input_dim, hidden_dim)::
         super(MyModel, self).__init__()
-        # Define the double-headed RNN
+        self.surr_rep = SurrogateRepresentation(input_dim)
         self.double_head_rnn = DoubleHeadRNN(input_dim, hidden_dim)
-        # Define the Transformer encoder
         self.transformer_encoder = TransformerEncoder(hidden_dim)
-        # Define the loss function, here we use the Wasserstein distance
-        self.criterion = WassersteinLoss()
     
     def forward(self, x):
-        """
-        Forward propagation
-        x: Input data
-        """
-        # Get the outputs of the double-headed RNN
+        x = self.surr_rep(x)
         output0, output1 = self.double_head_rnn(x)
-        # Get the output of the Transformer encoder
         encoded0 = self.transformer_encoder(output0)
         encoded1 = self.transformer_encoder(output1)
-        # Calculate the Wasserstein distance between the two outputs as the model's loss
-        loss = self.criterion(encoded0, encoded1)
-        return loss
+        return x, encoded0, encoded1
 
 
 ###################
