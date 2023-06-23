@@ -1,49 +1,65 @@
 #文件包含模型的训练代码
 import torch
-from models import MyModel
-from config import Config
+from utils import to_device, compute_accuracy
+from losses import compute_train_loss, compute_valid_loss  # 确保在losses.py中定义了这个函数
 
-def train(model, dataloader, criterion, optimizer, config):
+def train(model, train_dataloader, valid_dataloader, criterion, optimizer, config):
     """
-    训练函数
-    model: 模型
-    dataloader: 数据加载器
+    训练模型
+    model: 模型对象
+    train_dataloader: 训练数据加载器
+    valid_dataloader: 验证数据加载器
     criterion: 损失函数
     optimizer: 优化器
-    config: 配置参数
+    config: 配置对象
     """
-    model.train()  # 将模型设置为训练模式
-    for epoch in range(config.epochs):
-        for i, (inputs, targets) in enumerate(dataloader):
-            # 迁移到GPU
-            inputs = inputs.to(device)
-            targets = targets.to(device)
 
-            # 前向传播
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
+    # 移动模型到设备
+    device = config.device
+    model.to(device)
+
+    for epoch in range(config.num_epochs):
+        # 设置模型为训练模式
+        model.train()
+        train_loss = 0.0
+
+        for batch in train_dataloader:
+            # 移动数据到设备
+            batch = to_device(batch, device)
+
+            # 计算损失
+            loss = compute_train_loss(model, batch, criterion)
 
             # 反向传播和优化
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-            # 打印训练信息
-            if (i+1) % 100 == 0:
-                print(f'Epoch [{epoch+1}/{config.epochs}], Step [{i+1}/{len(dataloader)}], Loss: {loss.item()}')
+            train_loss += loss.item()
 
-if __name__ == '__main__':
-    config = Config()
+        train_loss /= len(train_dataloader)
 
-    # 创建模型
-    model = MyModel(config.input_dim, config.hidden_dim).to(device)
+        # 在验证集上评估模型
+        model.eval()
+        valid_loss = 0.0
+        with torch.no_grad():
+            for batch in valid_dataloader:
+                # 移动数据到设备
+                batch = to_device(batch, device)
 
-    # 创建数据加载器，这里假设你已经有了一个可以用的DataLoader
-    # dataloader = DataLoader(dataset, batch_size=config.batch_size)
+                # 计算损失
+                loss = compute_valid_loss(model, batch, criterion)
 
-    # 定义损失函数和优化器
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+                valid_loss += loss.item()
 
-    # 训练模型
-    train(model, dataloader, criterion, optimizer, config)
+        valid_loss /= len(valid_dataloader)
+
+        # 打印训练和验证损失
+        print(f'Epoch {epoch+1}/{config.num_epochs}')
+        print(f'Train Loss: {train_loss:.4f}')
+        print(f'Valid Loss: {valid_loss:.4f}')
+
+    return model
+###################
+#需要根据实际需求修改compute_train_loss和compute_valid_loss函数。
+###################

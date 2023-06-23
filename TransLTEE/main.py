@@ -3,7 +3,7 @@ import torch
 from models import MyModel
 from config import Config
 from train import train
-from data import get_dataloader  # 导入你在data.py中定义的函数
+from data import get_dataloader  # 导入data.py中定义的函数
 
 def main():
     # 创建配置对象
@@ -17,7 +17,7 @@ def main():
 
     # 创建数据加载器
     train_dataloader = get_dataloader('train.csv', config.batch_size)
-    valid_dataloader = get_dataloader('valid.csv', config.batch_size)  # 如果你有验证集的话
+    valid_dataloader = get_dataloader('valid.csv', config.batch_size)  # 如果有验证集的话
 
     # 定义损失函数和优化器
     criterion = torch.nn.CrossEntropyLoss()

@@ -48,7 +48,8 @@ class TransformerEncoder(nn.Module):
         x: 输入数据
         """
         # 对输入数据进行处理，得到Transformer编码器的输出
-        return self.transformer(x)
+        outputs = self.transformer(x)
+        return outputs.last_hidden_state
 
 class MyModel(nn.Module):
     """
