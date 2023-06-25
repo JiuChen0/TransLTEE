@@ -59,6 +59,34 @@ class TransformerEncoder(nn.Module):
         outputs = self.transformer(x)
         return outputs.last_hidden_state
 
+from transformers import BertModel, BertForMaskedLM
+
+
+class TransformerDecoder(nn.Module):
+    """
+    Transformer decoder structure
+    Uses the BertForMaskedLM model as the decoder. 
+    During forward propagation, it passes the input data x through the decoder model and then returns the output of the decoder model.
+    """
+    def __init__(self, hidden_dim):
+        """
+        Constructor
+        hidden_dim: Hidden layer dimension
+        """
+        super(TransformerDecoder, self).__init__()
+        # Use BertModel as Transformer decoder
+        self.transformer = BertForMaskedLM.from_pretrained('bert-base-uncased')
+    
+    def forward(self, x):
+        """
+        Forward propagation
+        x: Input data
+        """
+        # Process the input data to obtain the output of the Transformer decoder
+        outputs = self.transformer(x)
+        return outputs.logits
+
+
 class MyModel(nn.Module):
     """
     Our model structure, including the double-headed RNN and Transformer encoder
@@ -78,5 +106,6 @@ class MyModel(nn.Module):
 
 
 ###################
-# This code does not implement the attention mechanism or the stacking of multiple loss functions
+# This code use pre-trained bert as Transformer encoder,which include multi-head attention in the bert library
+# but may not include the stacking of multiple loss functions
 ###################
