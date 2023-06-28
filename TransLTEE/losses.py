@@ -3,14 +3,20 @@ import torch.nn.functional as F
 
 def compute_short_term_loss(surr_rep, encoded):
     # TODO: Implement the calculation of short-term loss
+    # MSE Loss
+    loss = F.mse_loss(surr_rep, encoded)
     return loss
 
 def compute_primary_outcome_loss(surr_rep, targets):
     # TODO: Implement the calculation of primary outcome loss
+    # Cross Entropy Loss
+    loss = F.cross_entropy(surr_rep, targets)
     return loss
 
 def compute_IPM_loss(encoded0, encoded1):
     # TODO: Implement the calculation of IPM loss (Wasserstein-1 distance)
+    # Here we use a placeholder
+    loss = torch.tensor(0.0)
     return loss
 
 def compute_train_loss(model, batch, weights):
