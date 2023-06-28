@@ -1,111 +1,54 @@
-import torch
-from torch import nn
-from transformers import TransformerModel
-from losses import WassersteinLoss
+from tensorflow.keras import Model
+from tensorflow.keras.layers import Dense, RNN, LSTMCell, GRUCell
+from transformers import TFBertModel, TFBertForMaskedLM
 
-class SurrogateRepresentation(nn.Module):
+class SurrogateRepresentation(Model):
     def __init__(self, dim_in):
         super(SurrogateRepresentation, self).__init__()
-        self.phi = nn.Linear(dim_in, dim_in)
-        self.activation = nn.ReLU()
+        self.phi = Dense(dim_in)
+        
+    def call(self, x):
+        return tf.nn.relu(self.phi(x))
 
-    def forward(self, x):
-        return self.activation(self.phi(x))
-
-class DoubleHeadRNN(nn.Module):
-    """ 
-    Double-headed RNN structure
-    """
+class DoubleHeadRNN(Model):
     def __init__(self, input_dim, hidden_dim):
-        """
-        Constructor
-        input_dim: Input dimension
-        hidden_dim: Hidden layer dimension
-        """
         super(DoubleHeadRNN, self).__init__()
-        # Define two RNN structures
-        self.rnn0 = nn.RNN(input_dim, hidden_dim)
-        self.rnn1 = nn.RNN(input_dim, hidden_dim)
-    
-    def forward(self, x):
-        """
-        Forward propagation
-        x: Input data
-        """
-        # Process the input data to obtain the outputs of the two RNNs
-        output0, _ = self.rnn0(x)
-        output1, _ = self.rnn1(x)
+        self.rnn0 = RNN(GRUCell(hidden_dim))  # GRU is used here, replace with LSTMCell for LSTM
+        self.rnn1 = RNN(GRUCell(hidden_dim))
+
+    def call(self, x):
+        output0 = self.rnn0(x)
+        output1 = self.rnn1(x)
         return output0, output1
 
-class TransformerEncoder(nn.Module):
-    """
-    Transformer encoder structure
-    """
-    def __init__(self, hidden_dim):
-        """
-        Constructor
-        hidden_dim: Hidden layer dimension
-        """
+class TransformerEncoder(Model):
+    def __init__(self):
         super(TransformerEncoder, self).__init__()
-        # Use pre-trained bert as Transformer encoder
-        self.transformer = TransformerModel.from_pretrained('bert-base-uncased')
-    
-    def forward(self, x):
-        """
-        Forward propagation
-        x: Input data
-        """
-        # Process the input data to obtain the output of the Transformer encoder
+        self.transformer = TFBertModel.from_pretrained('bert-base-uncased')
+
+    def call(self, x):
         outputs = self.transformer(x)
         return outputs.last_hidden_state
 
-from transformers import BertModel, BertForMaskedLM
-
-
-class TransformerDecoder(nn.Module):
-    """
-    Transformer decoder structure
-    Uses the BertForMaskedLM model as the decoder. 
-    During forward propagation, it passes the input data x through the decoder model and then returns the output of the decoder model.
-    """
-    def __init__(self, hidden_dim):
-        """
-        Constructor
-        hidden_dim: Hidden layer dimension
-        """
+class TransformerDecoder(Model):
+    def __init__(self):
         super(TransformerDecoder, self).__init__()
-        # Use BertModel as Transformer decoder
-        self.transformer = BertForMaskedLM.from_pretrained('bert-base-uncased')
-    
-    def forward(self, x):
-        """
-        Forward propagation
-        x: Input data
-        """
-        # Process the input data to obtain the output of the Transformer decoder
+        self.transformer = TFBertForMaskedLM.from_pretrained('bert-base-uncased')
+
+    def call(self, x):
         outputs = self.transformer(x)
         return outputs.logits
 
-
-class MyModel(nn.Module):
-    """
-    Our model structure, including the double-headed RNN and Transformer encoder
-    """
-    def __init__(self, input_dim, hidden_dim)::
+class MyModel(Model):
+    def __init__(self, input_dim, hidden_dim):
         super(MyModel, self).__init__()
         self.surr_rep = SurrogateRepresentation(input_dim)
         self.double_head_rnn = DoubleHeadRNN(input_dim, hidden_dim)
-        self.transformer_encoder = TransformerEncoder(hidden_dim)
-    
-    def forward(self, x):
+        self.transformer_encoder = TransformerEncoder()
+
+    def call(self, x):
         x = self.surr_rep(x)
         output0, output1 = self.double_head_rnn(x)
         encoded0 = self.transformer_encoder(output0)
         encoded1 = self.transformer_encoder(output1)
         return x, encoded0, encoded1
-
-
-###################
-# This code use pre-trained bert as Transformer encoder,which include multi-head attention in the bert library
-# but may not include the stacking of multiple loss functions
-###################

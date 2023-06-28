@@ -1,3 +1,5 @@
+from tensorflow.keras.optimizers import Adam
+
 class Config:
     """
     Configuration for the model and the training process
@@ -14,3 +16,6 @@ class Config:
         # Model parameters
         self.input_dim = 128  # Input dimension
         self.hidden_dim = 256  # Hidden layer dimension
+        self.optimizer = Adam(learning_rate=self.learning_rate, decay=self.weight_decay)
+
+config = Config()
