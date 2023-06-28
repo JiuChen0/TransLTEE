@@ -1,4 +1,4 @@
-from torch.utils.data import DataLoader
+import tensorflow as tf
 from models import MyModel
 from losses import compute_train_loss, compute_valid_loss
 from data import get_dataloader
@@ -10,22 +10,21 @@ def train():
     valid_loader = get_dataloader('valid.csv', config.batch_size)
 
     model = MyModel(config.input_dim, config.hidden_dim)
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
-    
+    optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate)
+
     for epoch in range(config.epochs):
         # Training
         model.train()
         for batch in train_loader:
-            loss = compute_train_loss(model, batch, config.loss_weights)
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+            with tf.GradientTape() as tape:
+                loss = compute_train_loss(model, batch, config.loss_weights)
+            gradients = tape.gradient(loss, model.trainable_variables)
+            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
         # Validation
         model.eval()
-        with torch.no_grad():
-            for batch in valid_loader:
-                loss = compute_valid_loss(model, batch, config.loss_weights)
+        for batch in valid_loader:
+            loss = compute_valid_loss(model, batch, config.loss_weights)
 
         # Save the model
-        torch.save(model.state_dict(), f'{config.save_dir}/model_{epoch}.pth')
+        model.save_weights(f'{config.save_dir}/model_{epoch}.h5')
