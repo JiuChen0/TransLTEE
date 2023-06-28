@@ -18,7 +18,10 @@ class WassersteinCalculator:
         nb = tf.reshape(nb, [1, -1])
         D = tf.maximum(na - 2*tf.matmul(A, B, False, True) + nb, 0.0)
         return D
-
+#####################################################################
+#WARNING!WARNING!WARNING!
+#wasserstein have 4 input, but tranformer encoder just have 2 output(double head)
+######################################################################
     def wasserstein(self, seq_len, X_ls, t, p):
         D = 0
         for i in range(seq_len):
