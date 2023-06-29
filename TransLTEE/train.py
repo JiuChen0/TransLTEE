@@ -9,7 +9,10 @@ def get_data(file):
     treatment = data[:, 0:1]
     y = data[:, 1:]
     return treatment, y
-
+"""
+It is assumed that during the training period, all treatments are 1, and y_ (i.e., the actual result) is also 1. 
+This may not be the case.
+"""
 def train():
     config = Config()
 
