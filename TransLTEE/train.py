@@ -1,30 +1,43 @@
 import tensorflow as tf
 from models import MyModel
 from losses import compute_train_loss, compute_valid_loss
-from data import get_dataloader
 from config import Config
+import numpy as np
 
+def get_data(file):
+    data = np.loadtxt(file, delimiter=',')
+    treatment = data[:, 0:1]
+    y = data[:, 1:]
+    return treatment, y
+"""
+It is assumed that during the training period, all treatments are 1, and y_ (i.e., the actual result) is also 1. 
+This may not be the case.
+"""
 def train():
     config = Config()
-    train_loader = get_dataloader('train.csv', config.batch_size)
-    valid_loader = get_dataloader('valid.csv', config.batch_size)
 
-    model = MyModel(config.input_dim, config.hidden_dim)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate)
+    for i in range(1, 11): # Loop through all generated datasets
+        # Load data
+        treatment_train, y_train = get_data('data/NEWS/Series_y_' + str(i) + '.txt')
+        # treatment_valid, y_valid = get_data('valid.csv')
 
-    for epoch in range(config.epochs):
-        # Training
-        model.train()
-        for batch in train_loader:
+        model = MyModel(config.input_dim, config.hidden_dim)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate)
+
+        for epoch in range(config.epochs):
+            # Training
+            model.train()
             with tf.GradientTape() as tape:
-                loss = compute_train_loss(model, batch, config.loss_weights)
+                x_train = treatment_train
+                t_train = np.ones((x_train.shape[0], 1, 1)) # Assuming treatment is always 1 for training
+                y_train_ = np.ones((x_train.shape[0], 1)) # Assuming y_ is always 1 for training
+                loss = compute_train_loss(model, (x_train, t_train, y_train_), config.loss_weights)
             gradients = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-        # Validation
-        model.eval()
-        for batch in valid_loader:
-            loss = compute_valid_loss(model, batch, config.loss_weights)
+            # # Validation
+            # model.eval()
+            # loss = compute_valid_loss(model, (x_valid, t_valid, y_valid_), config.loss_weights)
 
-        # Save the model
-        model.save_weights(f'{config.save_dir}/model_{epoch}.h5')
+            # Save the model
+            model.save_weights(f'{config.save_dir}/model_{epoch}.h5')

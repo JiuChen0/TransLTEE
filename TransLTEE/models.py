@@ -47,22 +47,7 @@ class MyModel(Model):
         self.double_head_rnn = DoubleHeadRNN(input_dim, hidden_dim)
         self.transformer_encoder = TransformerEncoder()
 
-        # Initialize the TensorFlow session
-        self.sess = tf.Session()
-
-        # Initialize placeholders
-        self.x = tf.placeholder("float", shape=[None, None, input_dim], name='x')  # Features
-        self.t = tf.placeholder("float", shape=[None, 1], name='t')  # Treatment
-        self.y_ = tf.placeholder("float", shape=[None, None], name='y_')  # Outcomes
-        self.r_alpha = tf.placeholder("float", name='r_alpha')
-        self.r_lambda = tf.placeholder("float", name='r_lambda')
-        self.do_in = tf.placeholder("float", name='dropout_in')
-        self.do_out = tf.placeholder("float", name='dropout_out')
-        self.p = tf.placeholder("float", name='p_treated')
-        self.test = tf.placeholder("float", name='test')
-        self.lr_input = tf.placeholder('float')
-
-    def call(self, x):
+    def call(self, x, t, y_):
         x = self.surr_rep(x)
         output0, output1 = self.double_head_rnn(x)
         encoded0 = self.transformer_encoder(output0)
