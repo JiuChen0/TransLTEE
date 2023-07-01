@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Create a console handler.
-# handler = logging.StreamHandler()
+handler = logging.StreamHandler()
 
 # Add the handler to the logger.
-# logger.addHandler(handler)
+logger.addHandler(handler)
 
 def main():
     # Create a configuration object
@@ -33,11 +33,11 @@ def main():
 
     for j in range(1, 11):
 
-        TY = np.loadtxt('data/IHDP/csv/ihdp_npci_' + str(j) + '.csv', delimiter=',')
+        TY = np.loadtxt('../data/IHDP/csv/ihdp_npci_' + str(j) + '.csv', delimiter=',')
         matrix = TY[:, 5:]
         N = TY.shape[0]
 
-        out_treat = np.loadtxt('data/IHDP/Series_y_' + str(j) + '.txt', delimiter=',')
+        out_treat = np.loadtxt('../data/IHDP/Series_y_' + str(j) + '.txt', delimiter=',')
         ts = out_treat[:, 0]
         ts = np.reshape(ts, (N, 1))
         ys = np.concatenate((out_treat[:, 1:(t0 + 1)], out_treat[:, -1].reshape(N, 1)), axis=1)
@@ -55,7 +55,7 @@ def main():
     # logger.info('DATA LOADERS SUCCESSFULLY CREATED!')
 
     # Compile the model with the optimizer and loss function
-    logger.info('COMPILING MODEL WITH THE OPTIMIZER AND LOSS FUNCTION')
+    logger.info('COMPILING MODEL WITH THE OPTIMIZER AND LOSS FUNCTION...')
     model.compile(optimizer=config.optimizer, 
                   loss=tf.keras.losses.CategoricalCrossentropy(), 
                   metrics=['accuracy'])
