@@ -1,4 +1,5 @@
 from tensorflow.keras.optimizers import Adam
+import tensorflow as tf
 
 class Config:
     """
@@ -19,7 +20,12 @@ class Config:
         # Model parameters
         self.input_dim = 128  # Input dimension
         self.hidden_dim = 256  # Hidden layer dimension
-        self.optimizer = Adam(learning_rate=self.learning_rate, decay=self.weight_decay)
+        self.lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=self.learning_rate,
+            decay_steps=10000,
+            decay_rate=0.95
+        )
+        self.optimizer = Adam(learning_rate=self.lr_schedule)
 
         # Added parameters
         self.n_in = 2  # Number of representation layers
