@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Create a console handler.
-handler = logging.StreamHandler()
+# handler = logging.StreamHandler()
 
 # Add the handler to the logger.
-logger.addHandler(handler)
+# logger.addHandler(handler)
 
 def main():
     # Create a configuration object
