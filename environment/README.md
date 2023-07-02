@@ -1,6 +1,6 @@
 # Installation Guide for TransLTEE
 
-This document provides a detailed guide on how to install and run TransLTEE on different operating systems. 
+This document provides a detailed guide on how to install and run TransLTEE on different operating systems. The guide currently covers Ubuntu 22.04 and Windows 10, and MacOS.
 
 ## Ubuntu 22.04
 
@@ -9,7 +9,7 @@ This document provides a detailed guide on how to install and run TransLTEE on d
     ```bash
     python --version
     ```
-   
+
 2. Install pip if it's not already installed:
 
     ```bash
@@ -21,7 +21,7 @@ This document provides a detailed guide on how to install and run TransLTEE on d
     ```bash
     conda create --name TransLTEE python=3.11
     ```
-   
+
 4. Activate the new Conda environment:
 
     ```bash
@@ -54,13 +54,105 @@ This document provides a detailed guide on how to install and run TransLTEE on d
     python main.py
     ```
 
-## Windows
+## Windows 10
 
+1. Make sure you have Python installed. You can download Python from the official website. This guide assumes you're using Python 3.11.3. You can verify your Python version by running:
 
+    ```bash
+    python --version
+    ```
+
+2. Install pip if it's not already installed. Python installations from python.org include pip by default.
+
+3. Install Anaconda. You can download it from the official Anaconda website.
+
+4. Create a new Conda environment named "TransLTEE":
+
+    ```bash
+    conda create --name TransLTEE python=3.11
+    ```
+
+5. Activate the new Conda environment:
+
+    ```bash
+    conda activate TransLTEE
+    ```
+
+6. Install the following Python libraries in your new environment:
+
+    - TensorFlow:
+    
+    ```bash
+    pip install tensorflow
+    ```
+
+    - Transformers:
+
+    ```bash
+    pip install transformers
+    ```
+
+    - Pandas:
+
+    ```bash
+    pip install pandas
+    ```
+
+7. Once the required Python libraries are installed, you should be able to run the main script with:
+
+    ```bash
+    python main.py
+    ```
 
 ## MacOS
 
+1. Make sure you have Python installed. You can download Python from the official website. This guide assumes you're using Python 3.11.3. You can verify your Python version by running:
 
+    ```bash
+    python --version
+    ```
+
+2. Install pip if it's not already installed. Python installations from python.org include pip by default.
+
+3. Install Anaconda. You can download it from the official Anaconda website.
+
+4. Create a new Conda environment named "TransLTEE":
+
+    ```bash
+    conda create --name TransLTEE python=3.11
+    ```
+
+5. Activate the new Conda environment:
+
+    ```bash
+    conda activate TransLTEE
+    ```
+
+6. Install the following Python libraries in your new environment:
+
+    - TensorFlow:
+    
+    ```bash
+    pip install tensorflow
+    ```
+
+    - Transformers:
+
+    ```bash
+    pip install transformers
+    ```
+
+    - Pandas:
+
+    ```bash
+    pip install pandas
+    ```
+
+7. Once the required Python libraries are installed, you should be able to run the main script with:
+
+    ```bash
+    python main.py
+    ```
 
 
 
