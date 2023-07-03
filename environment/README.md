@@ -84,7 +84,7 @@ If the above process fails for any reason, follow the detailed step-by-step guid
     python main.py
     ```
 
-## Windows 10
+## Windows 11
 
 1. Make sure you have Python installed. You can download Python from the official website. This guide assumes you're using Python 3.11.3. You can verify your Python version by running:
 
