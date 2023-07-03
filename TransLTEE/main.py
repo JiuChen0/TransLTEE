@@ -5,6 +5,7 @@ import numpy as np
 from data import get_dataloader
 import logging
 
+
 # Create a logger object.
 logger = logging.getLogger(__name__)
 
@@ -25,28 +26,33 @@ def main():
 
     # Create the model
     logger.info('BUILDING MODELS...')
-    model = MyModel(config.input_dim, config.hidden_dim)
+    model = MyModel(config.input_dim)
     logger.info('MODELS SUCCESSFULLY BUILT!')
 
     # Load and process the data
     t0=10
 
-    for j in range(1, 11):
+    # for j in range(1, 11):
 
-        TY = np.loadtxt('../data/IHDP/csv/ihdp_npci_' + str(j) + '.csv', delimiter=',')
-        matrix = TY[:, 5:]
-        N = TY.shape[0]
+    TY = np.loadtxt('../data/IHDP/csv/ihdp_npci_' + "1" + '.csv', delimiter=',')
+    matrix = TY[:, 5:]
+    N = TY.shape[0]
 
-        out_treat = np.loadtxt('../data/IHDP/Series_y_' + str(j) + '.txt', delimiter=',')
-        ts = out_treat[:, 0]
-        ts = np.reshape(ts, (N, 1))
-        ys = np.concatenate((out_treat[:, 1:(t0 + 1)], out_treat[:, -1].reshape(N, 1)), axis=1)
-        from sklearn.model_selection import train_test_split
+    out_treat = np.loadtxt('../data/IHDP/Series_y_' + "1" + '.txt', delimiter=',')
+    ts = out_treat[:, 0]
+    ts = np.reshape(ts, (N, 1))
+    # ys = np.concatenate((out_treat[:, 1:(t0 + 1)], out_treat[:, -1].reshape(N, 1)), axis=1)
+    ys = out_treat[:, 1:(t0 + 1)]
+    from sklearn.model_selection import train_test_split
 
-        matrix_rep = np.repeat(matrix[:, np.newaxis, :], t0, axis=1)
-        X_train, X_test, y_train, y_test, t_train, t_test = train_test_split(matrix_rep, ys, ts, test_size=0.2)
+    matrix_rep = np.repeat(matrix[:, np.newaxis, :], t0, axis=1)
+    X_train, X_test, y_train, y_test, t_train, t_test = train_test_split(matrix_rep, ys, ts, test_size=0.2)
 
-        print(np.shape(X_train), np.shape(X_test), np.shape(y_train), np.shape(y_test), np.shape(t_train), np.shape(t_test))
+    print(np.shape(X_train), np.shape(X_test), np.shape(y_train), np.shape(y_test), np.shape(t_train), np.shape(t_test))
+
+    input_x = tf.convert_to_tensor(X_train.reshape(-1, 25))
+
+        
 
     # Create the data loaders
     # logger.info('CREATING DATA LOADERS...')
@@ -63,10 +69,14 @@ def main():
 
     # Train the model
     logger.info('TRAINING MODEL...')
-    model.fit(train_dataloader, 
-              validation_data=valid_dataloader, 
-              epochs=config.epochs, 
-              batch_size=config.batch_size)
+    print(np.shape(model.predict(X_train)))
+    model.fit(
+    X_train,
+    X_train,
+    batch_size=597,  # Or any other batch size
+    epochs=10,  # Or any other number of epochs
+    # validation_split=0.2  # Or any other fraction for validation split
+    )
     logger.info('MODEL SUCCESSFULLY TRAINED!')
 
     # Save the model
