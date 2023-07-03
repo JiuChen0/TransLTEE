@@ -1,6 +1,36 @@
 # Installation Guide for TransLTEE
 
-This document provides a detailed guide on how to install and run TransLTEE on different operating systems. The guide currently covers Ubuntu 22.04 and Windows 10, and MacOS.
+This document provides a detailed guide on how to install and run TransLTEE on different operating systems. The guide currently covers Ubuntu 22.04, Windows 11, and MacOS. For an easier setup, we've provided Conda environment YAML files for each system. 
+
+For each system, try to import the Conda environment from the corresponding YAML file first. If this process fails, follow the detailed step-by-step guide provided.
+
+## Using Conda environment YAML file
+
+1. Make sure you have installed Anaconda or Miniconda on your system. If not, download it from the official [Anaconda website](https://www.anaconda.com/distribution/).
+
+2. Download the corresponding YAML file for your system.
+
+3. Open a terminal and navigate to the directory where you downloaded the YAML file.
+
+4. Create the new environment from the YAML file:
+
+    ```bash
+    conda env create -f TransLTEE.yml
+    ```
+
+5. Once the environment is created, activate it:
+
+    ```bash
+    conda activate TransLTEE
+    ```
+
+6. You should be able to run the main script with:
+
+    ```bash
+    python main.py
+    ```
+
+If the above process fails for any reason, follow the detailed step-by-step guide below for your system.
 
 ## Ubuntu 22.04
 
