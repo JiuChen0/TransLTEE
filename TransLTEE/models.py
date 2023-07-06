@@ -122,3 +122,6 @@ class MyModel(Model):
         encoded = self.transformer_encoder(x, training, mask)
         decoded = self.transformer_decoder(encoded, encoded, training, mask)
         return self.dense(encoded), self.dense(decoded)
+        decoder_output = self.transformer_decoder(encoded, training=training, mask=mask)  # assuming encoded is the output of your encoder
+        final_output = self.dense(decoder_output)
+        return final_output, decoder_output  # return both the final output and the decoder output
