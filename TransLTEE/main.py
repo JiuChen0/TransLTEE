@@ -66,13 +66,22 @@ def main():
     phi_X_train = tf.keras.layers.Dense(config.dim_in, activation='relu', kernel_regularizer=regularizer)(X_train)
     # print(phi_X_train)
     
-    output, decoder_output = model(
+    output = model(
     phi_X_train,
     training = True,
-    )
-    print("Output:", output)
-    print("Decoder Output:", decoder_output)
 
+    )
+    # encoded = model(
+    # phi_X_train,
+    # training = True,
+    # )
+    # decoded = model(
+    # phi_X_train,
+    # training = True,
+    # )
+    # print(f"Encoder Output: {encoded}")
+    # print(f"Decoder Output: {decoded}")
+    print(f"Model Output: {output}")
     logger.info('MODEL SUCCESSFULLY TRAINED!')
 
     # Save the model
