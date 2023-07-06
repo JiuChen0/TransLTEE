@@ -114,6 +114,7 @@ class MyModel(Model):
         self.transformer_encoder = TransformerEncoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
         self.transformer_decoder = TransformerDecoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
         self.dense = tf.keras.layers.Dense(100)
+        self.softmax = tf.keras.layers.Softmax()
 
     def call(self, x, training=False, mask=None):
         seq_len = tf.shape(x)[1]
@@ -121,4 +122,6 @@ class MyModel(Model):
             mask = tf.ones((seq_len, seq_len))
         encoded = self.transformer_encoder(x, training, mask)
         decoded = self.transformer_decoder(encoded, encoded, training, mask)
-        return self.dense(encoded), self.dense(decoded), encoded, decoded
+        linear_output = self.dense(decoded)
+        output = self.softmax(linear_output)
+        return self.dense(encoded), self.dense(decoded), encoded, decoded, output

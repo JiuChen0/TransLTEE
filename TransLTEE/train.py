@@ -1,43 +1,36 @@
-import tensorflow as tf
-from models import MyModel
-from losses import compute_train_loss, compute_valid_loss
-from config import Config
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.optimizers import Adam
 import numpy as np
 
-def get_data(file):
-    data = np.loadtxt(file, delimiter=',')
-    treatment = data[:, 0:1]
-    y = data[:, 1:]
-    return treatment, y
-"""
-It is assumed that during the training period, all treatments are 1, and y_ (i.e., the actual result) is also 1. 
-This may not be the case.
-"""
 def train():
     config = Config()
+        treatment_train, y_train = get_data('data/NEWS/Series_y_' + '1' + '.txt')
 
-    for i in range(1, 11): # Loop through all generated datasets
-        # Load data
-        treatment_train, y_train = get_data('data/NEWS/Series_y_' + str(i) + '.txt')
-        # treatment_valid, y_valid = get_data('valid.csv')
+        matrix_rep = np.repeat(matrix[:, np.newaxis, :], t0, axis=1)
+        X_train, X_test, y_train, y_test, t_train, t_test = train_test_split(matrix_rep, ys, ts, test_size=0.2)
+        n_train = X_train.shape[0]
+        n_test = X_test.shape[0]
 
         model = MyModel(config.input_dim, config.hidden_dim)
-        optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate)
+        optimizer = Adam(learning_rate=config.learning_rate)
+        model.compile(optimizer=optimizer, loss='mse') # Assuming 'mse' loss here, change as needed
 
         for epoch in range(config.epochs):
-            # Training
-            model.train()
-            with tf.GradientTape() as tape:
-                x_train = treatment_train
-                t_train = np.ones((x_train.shape[0], 1, 1)) # Assuming treatment is always 1 for training
-                y_train_ = np.ones((x_train.shape[0], 1)) # Assuming y_ is always 1 for training
-                loss = compute_train_loss(model, (x_train, t_train, y_train_), config.loss_weights)
-            gradients = tape.gradient(loss, model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
-            # # Validation
-            # model.eval()
-            # loss = compute_valid_loss(model, (x_valid, t_valid, y_valid_), config.loss_weights)
-
+            for i in range(0, n_train, config.batch_size):
+                x_batch = X_train[i:i+config.batch_size]
+                t_batch = t_train[i:i+config.batch_size]
+                y_batch = y_train[i:i+config.batch_size]
+                
+                loss = model.train_on_batch(x_batch, y_batch) # This will update the weights of the model
+                
+                # Check the performance every output_delay epochs
+                if epoch % config.output_delay == 0 or epoch == config.epochs - 1:
+                    y_pred = model.predict(X_test)
+                    # Compute any metrics you want here
+                    # RMSE example
+                    rmse = np.sqrt(np.mean((y_test - y_pred)**2))
+                    print(f'Epoch {epoch} - RMSE: {rmse}')
+                
             # Save the model
             model.save_weights(f'{config.save_dir}/model_{epoch}.h5')
+
