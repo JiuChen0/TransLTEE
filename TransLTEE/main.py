@@ -51,12 +51,6 @@ def main():
     # print(np.shape(X_train), np.shape(X_test), np.shape(y_train), np.shape(y_test), np.shape(t_train), np.shape(t_test))
 
     input_x = tf.convert_to_tensor(X_train.reshape(-1, 25))
-    # print(np.shape(input_x))
-    # Create the data loaders
-    # logger.info('CREATING DATA LOADERS...')
-    # train_dataloader = get_dataloader('train.csv', config.batch_size)
-    # valid_dataloader = get_dataloader('valid.csv', config.batch_size)  # If there is a validation set
-    # logger.info('DATA LOADERS SUCCESSFULLY CREATED!')
 
     # Compile the model with the optimizer and loss function
     logger.info('COMPILING MODEL WITH THE OPTIMIZER AND LOSS FUNCTION...')
@@ -71,14 +65,23 @@ def main():
     regularizer = tf.keras.regularizers.l2(l2=1.0)
     phi_X_train = tf.keras.layers.Dense(config.dim_in, activation='relu', kernel_regularizer=regularizer)(X_train)
     # print(phi_X_train)
+    
     output = model(
     phi_X_train,
     training = True,
-    # batch_size=597,  # Or any other batch size
-    # epochs=10,  # Or any other number of epochs
-    # validation_split=0.2  # Or any other fraction for validation split
+
     )
-    print(output)
+    # encoded = model(
+    # phi_X_train,
+    # training = True,
+    # )
+    # decoded = model(
+    # phi_X_train,
+    # training = True,
+    # )
+    # print(f"Encoder Output: {encoded}")
+    # print(f"Decoder Output: {decoded}")
+    print(f"Model Output: {output}")
     logger.info('MODEL SUCCESSFULLY TRAINED!')
 
     # Save the model
