@@ -7,7 +7,7 @@ class Config:
     """
     def __init__(self):
         # Training parameters
-        self.epochs = 100  # Number of training epochs
+        self.epochs = 10  # Number of training epochs
         self.batch_size = 64  # Batch size
         self.learning_rate = 0.001  # Learning rate
         self.weight_decay = 0.0001  # Weight decay
@@ -16,6 +16,7 @@ class Config:
         self.batch_size_test = 100  # Batch size for fine tune
         self.lrate_decay = 0.95  # Decay of learning rate every 100 iterations
         self.num_iterations_per_decay = 100
+        self.lr = 0.001  # <-- Add this line for learning rate
 
         # Model parameters
         self.input_dim = 100  # Input dimension

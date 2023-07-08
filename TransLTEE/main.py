@@ -4,7 +4,9 @@ from config import Config
 import numpy as np
 from data import get_dataloader
 import logging
-
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.losses import SparseCategoricalCrossentropy
+from tensorflow.keras.metrics import SparseCategoricalAccuracy
 
 # Create a logger object.
 logger = logging.getLogger(__name__)
@@ -54,33 +56,16 @@ def main():
 
     # Compile the model with the optimizer and loss function
     logger.info('COMPILING MODEL WITH THE OPTIMIZER AND LOSS FUNCTION...')
-    model.compile(optimizer=config.optimizer, 
-                  loss=tf.keras.losses.CategoricalCrossentropy(), 
-                  metrics=['accuracy'])
+    model.compile(optimizer=Adam(learning_rate=config.lr),
+                  loss=SparseCategoricalCrossentropy(from_logits=True),
+                  metrics=[SparseCategoricalAccuracy()])
     logger.info('OPTIMIZER AND LOSS FUNCTION SUCCESSFULLY COMPILED')
 
     # Train the model
     logger.info('TRAINING MODEL...')
-    #get phi(X), surrogate representation
-    regularizer = tf.keras.regularizers.l2(l2=1.0)
-    phi_X_train = tf.keras.layers.Dense(config.dim_in, activation='relu', kernel_regularizer=regularizer)(X_train)
-    # print(phi_X_train)
-    
-    output = model(
-    phi_X_train,
-    training = True,
-
-    )
-    # encoded = model(
-    # phi_X_train,
-    # training = True,
-    # )
-    # decoded = model(
-    # phi_X_train,
-    # training = True,
-    # )
-    # print(f"Encoder Output: {encoded}")
-    # print(f"Decoder Output: {decoded}")
+    history = model.fit(X_train, y_train, 
+                        epochs=config.epochs, 
+                        batch_size=config.batch_size)
     print(f"Model Output: {output}")
     logger.info('MODEL SUCCESSFULLY TRAINED!')
 
