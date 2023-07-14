@@ -12,6 +12,7 @@ have. d_model is the dimensionality of the input, num_heads is the number of att
 and dff is the dimensionality of the feed-forward network. The rate parameter is for the dropout rate.
 '''
 
+
 class TransformerEncoderBlock(tf.keras.layers.Layer):
     def __init__(self, d_model, num_heads, dff, rate=0.1):
         super(TransformerEncoderBlock, self).__init__()
@@ -113,15 +114,16 @@ class MyModel(Model):
         super(MyModel, self).__init__()
         self.transformer_encoder = TransformerEncoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
         self.transformer_decoder = TransformerDecoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
-        self.dense = tf.keras.layers.Dense(100)
+        self.dense = tf.keras.layers.Dense(input_dim,activation='relu')
         self.softmax = tf.keras.layers.Softmax()
 
     def call(self, x, training=False, mask=None):
         seq_len = tf.shape(x)[1]
         if mask is None:
             mask = tf.ones((seq_len, seq_len))
+        x = self.dense(x)
         encoded = self.transformer_encoder(x, training, mask)
-        decoded = self.transformer_decoder(encoded, encoded, training, mask)
+        decoded = self.transformer_decoder(x, encoded, training, mask)
         linear_output = self.dense(decoded)
         output = self.softmax(linear_output)
         return self.dense(encoded), self.dense(decoded), encoded, decoded, output
