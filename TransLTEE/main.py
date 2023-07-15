@@ -42,7 +42,7 @@ def main():
     ts = out_treat[:, 0]
     ts = np.reshape(ts, (N, 1))
     # ys = np.concatenate((out_treat[:, 1:(t0 + 1)], out_treat[:, -1].reshape(N, 1)), axis=1)
-    ys = out_treat[:, 1:(t0 + 1)]
+    ys = out_treat[:, 1:(t0 + 2)]
     from sklearn.model_selection import train_test_split
 
     matrix_rep = np.repeat(matrix[:, np.newaxis, :], t0, axis=1)
@@ -52,7 +52,9 @@ def main():
 
     input_x = tf.convert_to_tensor(X_train.reshape(-1, 25))
 
-    tar_train = tf.expand_dims(y_train,-1)
+    tar_train = tf.expand_dims(y_train[:,:-1],-1)
+    tar_real = tf.expand_dims(y_train[:, 1:],-1)
+
     print(np.shape(tar_train))
 
     # Compile the model with the optimizer and loss function
@@ -74,6 +76,17 @@ def main():
     training = True,
 
     )
+
+    pred_y = output[4]
+    pred_y = tf.squeeze(pred_y)
+    tar_real = tf.squeeze(tar_real)
+    tar_real = tf.cast(tar_real,tf.float32)
+    # print(pred_y)
+    print(pred_y.shape, tar_real.shape,pred_y.dtype, tar_real.dtype)
+    # print(tf.subtract(pred_y,tar_real))
+    pred_error = tf.reduce_mean(tf.square(pred_y - tar_real))
+    print(pred_error,pred_error.shape)
+
     # encoded = model(
     # phi_X_train,
     # training = True,
@@ -84,7 +97,9 @@ def main():
     # )
     # print(f"Encoder Output: {encoded}")
     # print(f"Decoder Output: {decoded}")
-    print(f"Model Output: {output}")
+
+    # print(f"Model Output: {output}")
+
     logger.info('MODEL SUCCESSFULLY TRAINED!')
 
     # Save the model
