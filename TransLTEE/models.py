@@ -111,17 +111,21 @@ class TransformerDecoder(tf.keras.layers.Layer):
 class MyModel(Model):
     def __init__(self, input_dim, num_layers=7, num_heads=5, dff=50, dropout_rate=0.1):
         super(MyModel, self).__init__()
+        self.regularizer = tf.keras.regularizers.l2(l2=1.0)
+        self.input_phi = tf.keras.layers.Dense(input_dim, activation='relu', kernel_regularizer=self.regularizer)
         self.transformer_encoder = TransformerEncoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
         self.transformer_decoder = TransformerDecoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
         self.dense = tf.keras.layers.Dense(100)
-        self.softmax = tf.keras.layers.Softmax()
+        self.linear = tf.keras.layers.Dense(1)
+        # self.softmax = tf.keras.layers.Softmax()
 
-    def call(self, x, training=False, mask=None):
-        seq_len = tf.shape(x)[1]
+    def call(self, x, tar, training=False, mask=None):
+        phi_x = self.input_phi(x)
+        seq_len = tf.shape(phi_x)[1]
         if mask is None:
             mask = tf.ones((seq_len, seq_len))
-        encoded = self.transformer_encoder(x, training, mask)
-        decoded = self.transformer_decoder(encoded, encoded, training, mask)
-        linear_output = self.dense(decoded)
-        output = self.softmax(linear_output)
-        return self.dense(encoded), self.dense(decoded), encoded, decoded, output
+        encoded = self.transformer_encoder(phi_x, training, mask)
+        decoded = self.transformer_decoder(tar, encoded, training, mask)
+        output = self.linear(decoded)
+        # output = self.softmax(linear_output)
+        return self.dense(encoded), self.linear(decoded), encoded, decoded, output, output.shape

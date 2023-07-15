@@ -30,15 +30,15 @@ def main():
     logger.info('MODELS SUCCESSFULLY BUILT!')
 
     # Load and process the data
-    t0=10
+    t0=50
 
     # for j in range(1, 11):
 
-    TY = np.loadtxt('../data/IHDP/csv/ihdp_npci_' + "1" + '.csv', delimiter=',')
+    TY = np.loadtxt('C:/Users/Huang Jinglin/Desktop/Pradeep/Trans-LTEE/data/IHDP/csv/ihdp_npci_' + "1" + '.csv', delimiter=',')
     matrix = TY[:, 5:]
     N = TY.shape[0]
 
-    out_treat = np.loadtxt('../data/IHDP/Series_y_' + "1" + '.txt', delimiter=',')
+    out_treat = np.loadtxt('C:/Users/Huang Jinglin/Desktop/Pradeep/Trans-LTEE/data/IHDP/Series_y_' + "1" + '.txt', delimiter=',')
     ts = out_treat[:, 0]
     ts = np.reshape(ts, (N, 1))
     # ys = np.concatenate((out_treat[:, 1:(t0 + 1)], out_treat[:, -1].reshape(N, 1)), axis=1)
@@ -48,9 +48,12 @@ def main():
     matrix_rep = np.repeat(matrix[:, np.newaxis, :], t0, axis=1)
     X_train, X_test, y_train, y_test, t_train, t_test = train_test_split(matrix_rep, ys, ts, test_size=0.2)
 
-    # print(np.shape(X_train), np.shape(X_test), np.shape(y_train), np.shape(y_test), np.shape(t_train), np.shape(t_test))
+    print(np.shape(X_train), np.shape(X_test), np.shape(y_train), np.shape(y_test), np.shape(t_train), np.shape(t_test))
 
     input_x = tf.convert_to_tensor(X_train.reshape(-1, 25))
+
+    tar_train = tf.expand_dims(y_train,-1)
+    print(np.shape(tar_train))
 
     # Compile the model with the optimizer and loss function
     logger.info('COMPILING MODEL WITH THE OPTIMIZER AND LOSS FUNCTION...')
@@ -62,12 +65,12 @@ def main():
     # Train the model
     logger.info('TRAINING MODEL...')
     #get phi(X), surrogate representation
-    regularizer = tf.keras.regularizers.l2(l2=1.0)
-    phi_X_train = tf.keras.layers.Dense(config.dim_in, activation='relu', kernel_regularizer=regularizer)(X_train)
+    # regularizer = tf.keras.regularizers.l2(l2=1.0)
+    # phi_X_train = tf.keras.layers.Dense(config.dim_in, activation='relu', kernel_regularizer=regularizer)(X_train)
     # print(phi_X_train)
     
     output = model(
-    phi_X_train,
+    X_train, tar_train, 
     training = True,
 
     )
