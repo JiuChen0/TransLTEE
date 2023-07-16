@@ -55,6 +55,9 @@ def main():
     tar_train = tf.expand_dims(y_train[:,:-1],-1)
     tar_real = tf.expand_dims(y_train[:, 1:],-1)
 
+    # t_train = tf.expand_dims(t_train,-1)
+    # t_test = tf.expand_dims(t_test,-1)
+
     print(np.shape(tar_train))
 
     # Compile the model with the optimizer and loss function
@@ -72,20 +75,20 @@ def main():
     # print(phi_X_train)
     
     output = model(
-    X_train, tar_train, 
+    X_train, t0, t_train, tar_train, tar_real,
     training = True,
 
     )
 
-    pred_y = output[4]
-    pred_y = tf.squeeze(pred_y)
-    tar_real = tf.squeeze(tar_real)
-    tar_real = tf.cast(tar_real,tf.float32)
-    # print(pred_y)
-    print(pred_y.shape, tar_real.shape,pred_y.dtype, tar_real.dtype)
-    # print(tf.subtract(pred_y,tar_real))
-    pred_error = tf.reduce_mean(tf.square(pred_y - tar_real))
-    print(pred_error,pred_error.shape)
+    # pred_y = output[4]
+    # pred_y = tf.squeeze(pred_y)
+    # tar_real = tf.squeeze(tar_real)
+    # tar_real = tf.cast(tar_real,tf.float32)
+    # # print(pred_y)
+    # print(pred_y.shape, tar_real.shape,pred_y.dtype, tar_real.dtype)
+    # # print(tf.subtract(pred_y,tar_real))
+    # pred_error = tf.reduce_mean(tf.square(pred_y - tar_real))
+    # print(pred_error,pred_error.shape)
 
     # encoded = model(
     # phi_X_train,
@@ -98,7 +101,7 @@ def main():
     # print(f"Encoder Output: {encoded}")
     # print(f"Decoder Output: {decoded}")
 
-    # print(f"Model Output: {output}")
+    print(f"Model Output: {output}")
 
     logger.info('MODEL SUCCESSFULLY TRAINED!')
 
