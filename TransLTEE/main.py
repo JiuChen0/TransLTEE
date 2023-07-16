@@ -34,11 +34,11 @@ def main():
 
     # for j in range(1, 11):
 
-    TY = np.loadtxt('C:/Users/Huang Jinglin/Desktop/Pradeep/Trans-LTEE/data/IHDP/csv/ihdp_npci_' + "1" + '.csv', delimiter=',')
+    TY = np.loadtxt('../data/IHDP/csv/ihdp_npci_' + "1" + '.csv', delimiter=',')
     matrix = TY[:, 5:]
     N = TY.shape[0]
 
-    out_treat = np.loadtxt('C:/Users/Huang Jinglin/Desktop/Pradeep/Trans-LTEE/data/IHDP/Series_y_' + "1" + '.txt', delimiter=',')
+    out_treat = np.loadtxt('../data/IHDP/Series_y_' + "1" + '.txt', delimiter=',')
     ts = out_treat[:, 0]
     ts = np.reshape(ts, (N, 1))
     # ys = np.concatenate((out_treat[:, 1:(t0 + 1)], out_treat[:, -1].reshape(N, 1)), axis=1)
