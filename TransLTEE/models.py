@@ -107,18 +107,9 @@ class TransformerDecoder(tf.keras.layers.Layer):
 
         return x
 
-
-
-class MyModel(Model):
-    def __init__(self, input_dim, num_layers=7, num_heads=5, dff=50, dropout_rate=0.1):
-        super(MyModel, self).__init__()
-        self.regularizer = tf.keras.regularizers.l2(l2=1.0)
-        self.input_phi = tf.keras.layers.Dense(input_dim, activation='relu', kernel_regularizer=self.regularizer)
-        self.transformer_encoder = TransformerEncoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
-        self.transformer_decoder = TransformerDecoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
-        self.dense = tf.keras.layers.Dense(100)
-        self.linear = tf.keras.layers.Dense(1)
-        # self.softmax = tf.keras.layers.Softmax()
+class risk():
+    def __init__(self):
+        pass
 
     def pdist2sq(self, X,Y):
         """ Computes the squared Euclidean distance between all pairs x in X, y in Y """
@@ -198,15 +189,27 @@ class MyModel(Model):
         # print(pred_y)
         # print(pred_y.shape, real_y.shape,pred_y.dtype, real_y.dtype)
         # print(tf.subtract(pred_y,tar_real))
-        pred_error = tf.reduce_mean(tf.square(pred_y - real_y))
-        print(pred_error,pred_error.shape)
-        return pred_error
+        pred_error = tf.keras.losses.mean_squared_error(real_y,pred_y)
+        pred_errors = tf.reduce_mean(pred_error)
+        print(pred_errors,pred_errors.shape)
+        return pred_errors
     
     def distance(self, encoded, seq_len, t):
         t = tf.cast(t, tf.float32)
         p_t = np.mean(t)
         dis = self.wasserstein(seq_len,encoded,t,p_t,lam=1,its=20)
         return dis
+
+class MyModel(Model):
+    def __init__(self, input_dim, num_layers=7, num_heads=5, dff=50, dropout_rate=0.1):
+        super(MyModel, self).__init__()
+        self.regularizer = tf.keras.regularizers.l2(l2=1.0)
+        self.input_phi = tf.keras.layers.Dense(input_dim, activation='relu', kernel_regularizer=self.regularizer)
+        self.transformer_encoder = TransformerEncoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
+        self.transformer_decoder = TransformerDecoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
+        self.dense = tf.keras.layers.Dense(100)
+        self.linear = tf.keras.layers.Dense(1)
+        # self.softmax = tf.keras.layers.Softmax()
 
     def call(self, x, t0, t, tar_input, tar_real, training=False, mask=None):
         phi_x = self.input_phi(x)
@@ -217,10 +220,12 @@ class MyModel(Model):
         encoded = self.transformer_encoder(phi_x, training, mask)
         decoded = self.transformer_decoder(tar_input, encoded, training, look_ahead_mask)
         output = self.linear(decoded)
-        print(encoded.shape, decoded.dtype, output.dtype)
-        predicted_error = self.pred_error(output, tar_real)
-        distance = self.distance(encoded, t0, t)
+        # print(encoded.shape, decoded.dtype, output.dtype)
+        predicted_error = risk().pred_error(output, tar_real)
+        dis = risk().distance(encoded, t0, t)
+        self.predicted_error = predicted_error 
+        self.dis = dis
         # output = self.softmax(linear_output)
         # return self.dense(encoded), self.linear(decoded), encoded, decoded, output
-        return predicted_error, distance
+        return output, predicted_error, dis
 
