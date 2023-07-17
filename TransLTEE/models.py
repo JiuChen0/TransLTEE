@@ -191,7 +191,7 @@ class risk():
         # print(tf.subtract(pred_y,tar_real))
         pred_error = tf.keras.losses.mean_squared_error(real_y,pred_y)
         pred_errors = tf.reduce_mean(pred_error)
-        print(pred_errors,pred_errors.shape)
+        # print(pred_errors,pred_errors.shape)
         return pred_errors
     
     def distance(self, encoded, seq_len, t):

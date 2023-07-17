@@ -45,6 +45,10 @@ def main():
     ts = np.reshape(ts, (N, 1))
     # ys = np.concatenate((out_treat[:, 1:(t0 + 1)], out_treat[:, -1].reshape(N, 1)), axis=1)
     ys = out_treat[:, 1:(t0 + 2)]
+
+    groundtruth = np.loadtxt('../data/IHDP/Series_groundtruth_' + '1' + '.txt')
+
+
     from sklearn.model_selection import train_test_split
 
     matrix_rep = np.repeat(matrix[:, np.newaxis, :], t0, axis=1)
@@ -84,13 +88,20 @@ def main():
     train_loss = tf.keras.metrics.Mean(name='train_loss')
     train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
 
-    def train_step(X_train, t0, t_train, tar_train, tar_real, gama=0.01):
+    def train_step(X_train, t0, t_train, tar_train, tar_real, gama = config.gama):
 
         with tf.GradientTape() as tape:
             predictions, predict_error, distance = model(
                 X_train, t0, t_train, tar_train, tar_real,
                 training = True,
                 )
+            
+            # CF_predictions, _, _ = model(
+            #     X_train, t0, (1-t_train), tar_train, tar_real,
+            #     training = True,
+            #     )
+            # loss_groundtruth = train_loss(abs(CF_predictions), groundtruth)
+            # loss = predict_error + loss_groundtruth + gama*distance
             loss = predict_error + gama*distance
 
         gradients = tape.gradient(loss, model.trainable_variables)    
@@ -105,13 +116,12 @@ def main():
         train_loss.reset_states()
         train_accuracy.reset_states()
 
-        I = random.sample(range(n_train//2, n_train), config.batch_size)
+        I = random.sample(range(0, n_train), config.batch_size)
         x_batch = X_train[I, :, :]
         t_batch = t_train[I, :]
         y_batch = y_train[I, :]
         tar_batch = tf.expand_dims(y_batch[:,:-1],-1)
         tar_real_batch = tf.expand_dims(y_batch[:, 1:],-1)
-
 
         train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, gama=0.01)
 
