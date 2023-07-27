@@ -36,18 +36,19 @@ def main():
 
     # for j in range(1, 11):
 
-    TY = np.loadtxt('../data/IHDP/csv/ihdp_npci_' + "1" + '.csv', delimiter=',')
+    TY = np.loadtxt('./data/IHDP/csv/ihdp_npci_' + "1" + '.csv', delimiter=',')
     matrix = TY[:, 5:]
     N = TY.shape[0]
 
-    out_treat = np.loadtxt('../data/IHDP/Series_y_' + "1" + '.txt', delimiter=',')
+    out_treat = np.loadtxt('./data/IHDP/Series_y_' + "1" + '.txt', delimiter=',')
     ts = out_treat[:, 0]
     ts = np.reshape(ts, (N, 1))
     # ys = np.concatenate((out_treat[:, 1:(t0 + 1)], out_treat[:, -1].reshape(N, 1)), axis=1)
     ys = out_treat[:, 1:(t0 + 2)]
 
-    groundtruth = np.loadtxt('../data/IHDP/Series_groundtruth_' + '1' + '.txt')
-
+    groundtruth0 = np.loadtxt('./data/IHDP/Series_groundtruth_' + '1' + '.txt')
+    groundtruth0 = np.reshape(groundtruth0[:t0], (t0, 1))
+    print(groundtruth0.shape)
 
     from sklearn.model_selection import train_test_split
 
@@ -88,7 +89,7 @@ def main():
     train_loss = tf.keras.metrics.Mean(name='train_loss')
     train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
 
-    def train_step(X_train, t0, t_train, tar_train, tar_real, gama = config.gama):
+    def train_step(X_train, t0, t_train, tar_train, tar_real, groundtruth, gama = config.gama):
 
         with tf.GradientTape() as tape:
             predictions, predict_error, distance = model(
@@ -96,19 +97,23 @@ def main():
                 training = True,
                 )
             
-            # CF_predictions, _, _ = model(
-            #     X_train, t0, (1-t_train), tar_train, tar_real,
-            #     training = True,
-            #     )
+            CF_predictions, _, _ = model(
+                X_train, t0, (1-t_train), tar_train, tar_real,
+                training = True,
+                )
             # loss_groundtruth = train_loss(abs(CF_predictions), groundtruth)
             # loss = predict_error + loss_groundtruth + gama*distance
+            pred_groundtruth = tf.reduce_mean(abs(predict_error-CF_predictions),axis=0)
+            # print(pred_groundtruth)
             loss = predict_error + gama*distance
 
         gradients = tape.gradient(loss, model.trainable_variables)    
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
         train_loss(loss)
-        train_accuracy(tar_real, predictions)
+        train_accuracy(pred_groundtruth, groundtruth)
+        # train_accuracy(tar_real, predictions)
+        # print([CF_predictions])
 
 ## Training
     for epoch in range(config.epochs):
@@ -123,7 +128,7 @@ def main():
         tar_batch = tf.expand_dims(y_batch[:,:-1],-1)
         tar_real_batch = tf.expand_dims(y_batch[:, 1:],-1)
 
-        train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, gama=0.01)
+        train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, groundtruth0, gama=0.01)
 
         print ('Epoch {} Loss {:.4f} Accuracy {:.4f}'.format(epoch + 1, train_loss.result(), train_accuracy.result()))     
         print ('Time taken for 1 epoch: {} secs\n'.format(time.time() - start))
