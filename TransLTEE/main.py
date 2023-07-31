@@ -104,15 +104,15 @@ def main():
             # loss_groundtruth = train_loss(abs(CF_predictions), groundtruth)
             # loss = predict_error + loss_groundtruth + gama*distance
             pred_effect = tf.reduce_mean(abs(predict_error-CF_predictions),axis=0)
-            print(pred_effect)
+            # print(pred_effect)
             loss = predict_error + gama*distance
 
         gradients = tape.gradient(loss, model.trainable_variables)    
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
         train_loss(loss)
-        train_accuracy(pred_effect, groundtruth)
-        # train_accuracy(tar_real, predictions)
+        # train_accuracy(pred_effect, groundtruth)
+        train_accuracy(tar_real, predictions)
         # print([CF_predictions])
 
 ## Training
@@ -127,7 +127,13 @@ def main():
             start_idx = batch_idx * config.batch_size
             end_idx = start_idx + config.batch_size
 
-            train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, gama=0.01)
+            x_batch = X_train[start_idx:end_idx, :, :]
+            t_batch = t_train[start_idx:end_idx, :]
+            y_batch = y_train[start_idx:end_idx, :]
+            tar_batch = tf.expand_dims(y_batch[:,:-1],-1)
+            tar_real_batch = tf.expand_dims(y_batch[:, 1:],-1)
+
+            train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, groundtruth0, gama=0.01)
 
         # If there are any remaining samples, pack them into a mini-batch and use them for training
         if n_train % config.batch_size != 0:
@@ -138,7 +144,7 @@ def main():
             tar_batch = tf.expand_dims(y_batch[:,:-1],-1)
             tar_real_batch = tf.expand_dims(y_batch[:, 1:],-1)
 
-            train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, gama=0.01)
+            train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, groundtruth0, gama=0.01)
 
         # Timing and printing happens here after each epoch
         epoch_time = time.time() - start

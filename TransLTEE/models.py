@@ -233,7 +233,7 @@ class MyModel(Model):
         phi_0 = self.input_phi(x_0)
         phi_1 = self.input_phi(x_1)
 
-        print(phi_0.shape,phi_1.shape)
+        # print(phi_0.shape,phi_1.shape)
 
         # print(phi_0,phi_1)
         if mask is None:
