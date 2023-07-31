@@ -117,21 +117,33 @@ def main():
 
 ## Training
     for epoch in range(config.epochs):
-        start = time.time()
         train_loss.reset_states()
         train_accuracy.reset_states()
+        start = time.time()
 
-        I = random.sample(range(0, n_train), config.batch_size)
-        x_batch = X_train[I, :, :]
-        t_batch = t_train[I, :]
-        y_batch = y_train[I, :]
-        tar_batch = tf.expand_dims(y_batch[:,:-1],-1)
-        tar_real_batch = tf.expand_dims(y_batch[:, 1:],-1)
+        # Let's split the data into batches
+        num_batches = n_train // config.batch_size
+        for batch_idx in range(num_batches):
+            start_idx = batch_idx * config.batch_size
+            end_idx = start_idx + config.batch_size
 
-        train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, groundtruth0, gama=0.01)
+            train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, gama=0.01)
 
-        print ('Epoch {} Loss {:.4f} Accuracy {:.4f}'.format(epoch + 1, train_loss.result(), train_accuracy.result()))     
-        print ('Time taken for 1 epoch: {} secs\n'.format(time.time() - start))
+        # If there are any remaining samples, pack them into a mini-batch and use them for training
+        if n_train % config.batch_size != 0:
+            start_idx = num_batches * config.batch_size
+            x_batch = X_train[start_idx:, :, :]
+            t_batch = t_train[start_idx:, :]
+            y_batch = y_train[start_idx:, :]
+            tar_batch = tf.expand_dims(y_batch[:,:-1],-1)
+            tar_real_batch = tf.expand_dims(y_batch[:, 1:],-1)
+
+            train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, gama=0.01)
+
+        # Timing and printing happens here after each epoch
+        epoch_time = time.time() - start
+        print(f'Epoch {epoch + 1} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
+        print(f'Time taken for 1 epoch: {epoch_time:.2f} secs\n')
 
     # output = model(
     # X_train, t0, t_train, tar_train, tar_real,
