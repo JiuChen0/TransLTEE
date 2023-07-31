@@ -63,10 +63,98 @@ def main():
 
     # Train the model
     logger.info('TRAINING MODEL...')
+<<<<<<< Updated upstream
     history = model.fit(X_train, y_train, 
                         epochs=config.epochs, 
                         batch_size=config.batch_size)
     print(f"Model Output: {output}")
+=======
+    #get phi(X), surrogate representation
+    # regularizer = tf.keras.regularizers.l2(l2=1.0)
+    # phi_X_train = tf.keras.layers.Dense(config.dim_in, activation='relu', kernel_regularizer=regularizer)(X_train)
+    # print(phi_X_train)
+
+
+    ## Gradient Descent
+    optimizer = config.optimizer
+    train_loss = tf.keras.metrics.Mean(name='train_loss')
+    train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+
+    def train_step(X_train, t0, t_train, tar_train, tar_real, groundtruth, gama = config.gama):
+
+        with tf.GradientTape() as tape:
+            predictions, predict_error, distance = model(
+                X_train, t0, t_train, tar_train, tar_real,
+                training = True,
+                )
+            
+            CF_predictions, _, _ = model(
+                X_train, t0, (1-t_train), tar_train, tar_real,
+                training = True,
+                )
+            # loss_groundtruth = train_loss(abs(CF_predictions), groundtruth)
+            # loss = predict_error + loss_groundtruth + gama*distance
+            pred_effect = tf.reduce_mean(abs(predict_error-CF_predictions),axis=0)
+            # print(pred_effect)
+            
+            loss = predict_error + gama*distance
+            # loss = pred_effect-groundtruth
+
+        gradients = tape.gradient(loss, model.trainable_variables)    
+        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+        train_loss(loss)
+        train_accuracy(pred_effect, groundtruth)
+        # train_accuracy(tar_real, predictions)
+        # print([CF_predictions])
+
+## Training
+    for epoch in range(config.epochs):
+        start = time.time()
+        train_loss.reset_states()
+        train_accuracy.reset_states()
+
+        I = random.sample(range(0, n_train), config.batch_size)
+        x_batch = X_train[I, :, :]
+        t_batch = t_train[I, :]
+        y_batch = y_train[I, :]
+        tar_batch = tf.expand_dims(y_batch[:,:-1],-1)
+        tar_real_batch = tf.expand_dims(y_batch[:, 1:],-1)
+
+        train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, groundtruth0, gama=0.01)
+
+        print ('Epoch {} Loss {:.4f} Accuracy {:.4f}'.format(epoch + 1, train_loss.result(), train_accuracy.result()))     
+        print ('Time taken for 1 epoch: {} secs\n'.format(time.time() - start))
+
+    # output = model(
+    # X_train, t0, t_train, tar_train, tar_real,
+    # training = True,
+    # )
+    # print(f"Model Output: {output}")
+
+    # pred_y = output[4]
+    # pred_y = tf.squeeze(pred_y)
+    # tar_real = tf.squeeze(tar_real)
+    # tar_real = tf.cast(tar_real,tf.float32)
+    # # print(pred_y)
+    # print(pred_y.shape, tar_real.shape,pred_y.dtype, tar_real.dtype)
+    # # print(tf.subtract(pred_y,tar_real))
+    # pred_error = tf.reduce_mean(tf.square(pred_y - tar_real))
+    # print(pred_error,pred_error.shape)
+
+    # encoded = model(
+    # phi_X_train,
+    # training = True,
+    # )
+    # decoded = model(
+    # phi_X_train,
+    # training = True,
+    # )
+    # print(f"Encoder Output: {encoded}")
+    # print(f"Decoder Output: {decoded}")
+
+
+>>>>>>> Stashed changes
     logger.info('MODEL SUCCESSFULLY TRAINED!')
 
     # Save the model
