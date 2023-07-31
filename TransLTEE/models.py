@@ -203,6 +203,7 @@ class risk():
 class MyModel(Model):
     def __init__(self, input_dim, num_layers=7, num_heads=5, dff=50, dropout_rate=0.1):
         super(MyModel, self).__init__()
+        self.input_dim = input_dim
         self.regularizer = tf.keras.regularizers.l2(l2=1.0)
         self.input_phi = tf.keras.layers.Dense(input_dim, activation='relu', kernel_regularizer=self.regularizer)
         self.transformer_encoder = TransformerEncoder(num_layers=num_layers, d_model=input_dim, num_heads=num_heads, dff=dff, rate=dropout_rate)
@@ -211,15 +212,50 @@ class MyModel(Model):
         self.linear = tf.keras.layers.Dense(1)
         # self.softmax = tf.keras.layers.Softmax()
 
-    def call(self, x, t0, t, tar_input, tar_real, training=False, mask=None):
+    def call(self, x, t0, t, tar_input, tar_real, training=False, mask=None, num_layers=7, num_heads=5, dff=50, dropout_rate=0.1):
         phi_x = self.input_phi(x)
         seq_len = tf.shape(phi_x)[1]
+        i0 = tf.cast(tf.where(t < 1)[:,0], tf.int32)
+        i1 = tf.cast(tf.where(t > 0)[:,0], tf.int32)
+        # n_0 = tf.cast(sum(1-t), tf.int32)
+        # n_1 = tf.cast(sum(t), tf.int32)
+        # print(n_0,n_1)
+
+        # self.transformer_encoder0 = TransformerEncoder(num_layers=num_layers, d_model=dim_0, num_heads=num_heads, dff=dff, rate=dropout_rate)
+        # self.transformer_decoder0 = TransformerDecoder(num_layers=num_layers, d_model=dim_0, num_heads=num_heads, dff=dff, rate=dropout_rate)
+        # self.transformer_encoder1 = TransformerEncoder(num_layers=num_layers, d_model=dim_1, num_heads=num_heads, dff=dff, rate=dropout_rate)
+        # self.transformer_decoder1 = TransformerDecoder(num_layers=num_layers, d_model=dim_1, num_heads=num_heads, dff=dff, rate=dropout_rate)
+
+        x_0 = tf.gather(x[:,:,:], i0)
+        x_1 = tf.gather(x[:,:,:], i1)
+        tar_0 = tf.gather(tar_input[:,:,:], i0)
+        tar_1 = tf.gather(tar_input[:,:,:], i1)
+        phi_0 = self.input_phi(x_0)
+        phi_1 = self.input_phi(x_1)
+
+        print(phi_0.shape,phi_1.shape)
+
+        # print(phi_0,phi_1)
         if mask is None:
             mask = tf.ones((seq_len, seq_len))
         look_ahead_mask = 1 - tf.linalg.band_part(tf.ones((tf.shape(tar_input)[1], tf.shape(tar_input)[1])), -1, 0)
-        encoded = self.transformer_encoder(phi_x, training, mask)
-        decoded = self.transformer_decoder(tar_input, encoded, training, look_ahead_mask)
-        output = self.linear(decoded)
+        # encoded = self.transformer_encoder(phi_x, training, mask)
+        # decoded = self.transformer_decoder(tar_input, encoded, training, look_ahead_mask)
+        # output = self.linear(decoded)
+
+        encoded0 = self.transformer_encoder(phi_0, training, mask)
+        decoded0 = self.transformer_decoder(tar_0, encoded0, training, look_ahead_mask)
+        output_0 = self.linear(decoded0)
+
+        encoded1 = self.transformer_encoder(phi_1, training, mask)
+        decoded1 = self.transformer_decoder(tar_1, encoded1, training, look_ahead_mask)
+        output_1 = self.linear(decoded1)
+
+        encoded = tf.concat((encoded0, encoded1), axis=0)
+        
+        output = tf.concat((output_0, output_1), axis=0)
+        # print(phi_x.shape,output_0.shape,output_1.shape)
+
         # print(encoded.shape, decoded.dtype, output.dtype)
         predicted_error = risk().pred_error(output, tar_real)
         dis = risk().distance(encoded, t0, t)

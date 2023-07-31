@@ -103,15 +103,15 @@ def main():
                 )
             # loss_groundtruth = train_loss(abs(CF_predictions), groundtruth)
             # loss = predict_error + loss_groundtruth + gama*distance
-            pred_groundtruth = tf.reduce_mean(abs(predict_error-CF_predictions),axis=0)
-            # print(pred_groundtruth)
+            pred_effect = tf.reduce_mean(abs(predict_error-CF_predictions),axis=0)
+            print(pred_effect)
             loss = predict_error + gama*distance
 
         gradients = tape.gradient(loss, model.trainable_variables)    
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
         train_loss(loss)
-        train_accuracy(pred_groundtruth, groundtruth)
+        train_accuracy(pred_effect, groundtruth)
         # train_accuracy(tar_real, predictions)
         # print([CF_predictions])
 
