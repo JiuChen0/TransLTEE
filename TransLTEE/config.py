@@ -16,7 +16,7 @@ class Config:
         self.batch_size_test = 100  # Batch size for fine tune
         self.lrate_decay = 0.95  # Decay of learning rate every 100 iterations
         self.num_iterations_per_decay = 100
-        self.lr = 0.001  # <-- Add this line for learning rate
+        self.gama = 1e-6 # contribution of imbalance loss
 
         # Model parameters
         self.input_dim = 100  # Input dimension
