@@ -1,51 +1,122 @@
+"""Deterministically generate longitudinal NEWS outcomes.
+
+The committed ``.csv.x`` and ``.csv.y`` files are the static NEWS benchmark.
+This script converts them into the 100-step semi-synthetic sequences used by
+TransLTEE. The ``.y`` suffix is inherited from the upstream dataset; it is a
+numeric CSV file, not Yacc source code.
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
 import numpy as np
 from sklearn.decomposition import LatentDirichletAllocation
-'''
-The np.expand_dims operation was performed on each sample to change its shape from (3477,) to (1, 3477).
-Thus, after stacking all samples, the final shape obtained is (5000, 1, 3477), which matches the model input.
-The treatment, Y, and YC were all subjected to the same deformation operation, since the model may use this information simultaneously.
-The dataset is divided into a training set and a test set. This step was not performed in the original code, so I assume that all generated data is used for training. If a test set is needed, some additional modifications may be required.
-There is no pre-processing or normalization performed. In practice, appropriate pre-processing may be required depending on the situation.
-'''
-'''Data generation follow learning representations for counterfactual inference'''
-for i in range(1,11):
-    TY=np.loadtxt('data/NEWS/topic_doc_mean_n5000_k3477_seed_'+str(i)+'.csv.y',delimiter=',')
-    treatment=TY[:,0]
-    treated=np.where(treatment>0)[0]
-    controlled=np.where(treatment<1)[0]
-    y=TY[:,1]
-    yc=TY[:,2]
 
-    matrix = np.zeros((5000, 1, 3477))
+from TransLTEE.data import _load_news_features
 
-    with open('data/NEWS/topic_doc_mean_n5000_k3477_seed_'+str(i)+'.csv.x', 'r') as fin:
-        for line in fin.readlines():
-            line = line.strip().split(',')
-            matrix[int(line[0]) - 1, 0, int(line[1]) - 1] = int(line[2])
 
-    #run LDA
-    no_topics=50
-    z = LatentDirichletAllocation(n_components=no_topics, max_iter=5, learning_method='online', learning_offset=50.,random_state=0).fit_transform(matrix[:, 0, :])
-    z1=z[np.random.randint(5000,size=1),:]
-    z0=np.mean(z,axis=0)
+PROJECT_ROOT = Path(__file__).resolve().parent
 
-    T=100
-    Y=np.zeros((5000, T, 1))
-    YC=np.zeros((5000, T, 1))
 
-    Y[:,0,0]=y
-    YC[:,0,0]=yc
-    for t in range(1,T):
-        noise=np.random.normal(0,1,1)
-        Y[:,t,0]=50*(np.matmul(z,z0.reshape(-1))+treatment*np.matmul(z,z1.reshape(-1)))+0.03*np.sum(Y[:,0:t-1,0],axis=1)+noise
-        YC[:, t,0] = 50 * (np.matmul(z, z0.reshape(-1)) + (1-treatment) * np.matmul(z, z1.reshape(-1))) + 0.03 * np.sum(
-            YC[:, 0:t - 1,0], axis=1) + noise
+def generate_news(
+    data_dir: Path,
+    repetition: int,
+    seed: int,
+    timesteps: int = 100,
+) -> None:
+    dataset_dir = data_dir / "NEWS"
+    labels_path = dataset_dir / f"topic_doc_mean_n5000_k3477_seed_{repetition}.csv.y"
+    features_path = dataset_dir / f"topic_doc_mean_n5000_k3477_seed_{repetition}.csv.x"
+    labels = np.loadtxt(labels_path, delimiter=",", dtype=np.float64)
+    features = _load_news_features(features_path).astype(np.float64)
+    treatment = labels[:, 0]
+    factual_initial = labels[:, 1]
+    counterfactual_initial = labels[:, 2]
+    sample_count = treatment.shape[0]
 
-    treatment=np.reshape(treatment,(5000,1,1))
-    data=np.concatenate((treatment,Y),axis=2)
+    rng = np.random.default_rng(seed)
+    topics = LatentDirichletAllocation(
+        n_components=50,
+        max_iter=5,
+        learning_method="online",
+        learning_offset=50.0,
+        random_state=seed,
+    ).fit_transform(features)
+    treated_centroid = topics[rng.integers(sample_count)]
+    population_centroid = topics.mean(axis=0)
+    baseline = 50.0 * (topics @ population_centroid)
+    treatment_effect = 50.0 * (topics @ treated_centroid)
 
-    y_treated=np.concatenate((YC[controlled],Y[treated]),axis=0)
-    y_controlled=np.concatenate((Y[controlled],YC[treated]),axis=0)
-    causal_effects = np.mean(y_treated - y_controlled, axis=0)
-    np.savetxt('data/NEWS/Series_groundtruth_'+str(i)+'.txt', causal_effects, delimiter=',', fmt='%.2f')
-    np.savetxt('data/NEWS/Series_y_'+str(i)+'.txt', data, delimiter=',', fmt='%.2f')
+    factual = np.zeros((sample_count, timesteps), dtype=np.float64)
+    counterfactual = np.zeros_like(factual)
+    factual[:, 0] = factual_initial
+    counterfactual[:, 0] = counterfactual_initial
+
+    for timestep in range(1, timesteps):
+        # Common random numbers isolate treatment effects while retaining
+        # independent observation noise for each unit.
+        noise = rng.normal(0.0, 1.0, sample_count)
+        factual_history = 0.03 * factual[:, :timestep].sum(axis=1)
+        counterfactual_history = 0.03 * counterfactual[:, :timestep].sum(axis=1)
+        factual[:, timestep] = (
+            baseline + treatment * treatment_effect + factual_history + noise
+        )
+        counterfactual[:, timestep] = (
+            baseline
+            + (1.0 - treatment) * treatment_effect
+            + counterfactual_history
+            + noise
+        )
+
+    potential_treated = np.where(
+        treatment[:, np.newaxis] > 0.5,
+        factual,
+        counterfactual,
+    )
+    potential_control = np.where(
+        treatment[:, np.newaxis] > 0.5,
+        counterfactual,
+        factual,
+    )
+    ground_truth = np.mean(potential_treated - potential_control, axis=0)
+    series = np.column_stack([treatment, factual])
+    np.savetxt(
+        dataset_dir / f"Series_groundtruth_{repetition}.txt",
+        ground_truth,
+        delimiter=",",
+        fmt="%.6f",
+    )
+    np.savetxt(
+        dataset_dir / f"Series_y_{repetition}.txt",
+        series,
+        delimiter=",",
+        fmt="%.6f",
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data-dir", type=Path, default=PROJECT_ROOT / "data")
+    parser.add_argument("--repetition", type=int, default=1)
+    parser.add_argument("--repetitions", type=int, default=1)
+    parser.add_argument("--seed", type=int, default=2023)
+    parser.add_argument("--timesteps", type=int, default=100)
+    arguments = parser.parse_args()
+
+    end = arguments.repetition + arguments.repetitions
+    if arguments.repetition < 1 or end > 11:
+        raise ValueError("Requested repetitions must stay within 1..10")
+    for repetition in range(arguments.repetition, end):
+        generate_news(
+            arguments.data_dir,
+            repetition,
+            seed=arguments.seed + repetition,
+            timesteps=arguments.timesteps,
+        )
+        print(f"Generated NEWS repetition {repetition}")
+
+
+if __name__ == "__main__":
+    main()

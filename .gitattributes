@@ -1,0 +1,9 @@
+# The upstream NEWS benchmark uses .y for numeric CSV labels. It is not Yacc.
+data/NEWS/*.csv.[xy] linguist-vendored
+
+# Longitudinal sequences are generated experiment artifacts, not source code.
+data/**/Series_*.txt linguist-generated
+
+# Keep large numeric files out of text diffs.
+data/NEWS/*.csv.[xy] -diff
+data/**/Series_*.txt -diff

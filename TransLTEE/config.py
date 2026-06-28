@@ -1,44 +1,52 @@
-from tensorflow.keras.optimizers.legacy import Adam
-import tensorflow as tf
+"""Experiment configuration for TransLTEE."""
 
-class Config:
-    """
-    Configuration for the model and the training process
-    """
-    def __init__(self):
-        # Training parameters
-        self.epochs = 10  # Number of training epochs
-        self.batch_size = 64  # Batch size
-        self.learning_rate = 0.001  # Learning rate
-        self.weight_decay = 0.0001  # Weight decay
-        self.save_dir = './checkpoints'  # Path to save the model
-        self.loss_weights = [1.0, 1.0, 1.0]  # Weights for the three losses
-        self.batch_size_test = 100  # Batch size for fine tune
-        self.lrate_decay = 0.95  # Decay of learning rate every 100 iterations
-        self.num_iterations_per_decay = 100
-        self.gama = 1e-6 # contribution of imbalance loss
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any
 
-        # Model parameters
-        self.input_dim = 100  # Input dimension
-        self.hidden_dim = 256  # Hidden layer dimension
-        self.optimizer = Adam(learning_rate=self.learning_rate, decay=self.weight_decay)
 
-        # Added parameters
-        self.n_in = 2  # Number of representation layers
-        self.n_out = 2  # Number of regression layers
-        self.p_alpha = 1e-8  # Imbalance regularization param
-        self.p_lambda = 1e-6  # Weight decay regularization parameter
-        self.dropout_in = 0.9  # Input layers dropout keep rate
-        self.dropout_out = 0.9  # Output layers dropout keep rate
-        self.dim_in = 100  # Pre-representation layer dimensions
-        self.dim_out = 100  # Post-representation layer dimensions
-        self.batch_norm = 1  # Whether to use batch normalization
-        self.normalization = 'none'  # How to normalize representation
-        self.rbf_sigma = 0.1  # RBF MMD sigma
-        self.experiments = 1  # Number of experiments
-        self.iterations = 1000  # Number of iterations training
-        self.iterations_tune = 500  # Number of iterations testing
-        self.weight_init = 0.01  # Weight initialization scale
-        self.optimizer_name = 'Adam'  # Which optimizer to use
+@dataclass(frozen=True)
+class ExperimentConfig:
+    """Model, optimization, and evaluation settings."""
 
-config = Config()
+    dataset: str = "ihdp"
+    repetition: int = 1
+    seed: int = 42
+    epochs: int = 50
+    batch_size: int = 64
+    learning_rate: float = 1e-3
+    gamma: float = 1e-6
+    weight_decay: float = 1e-6
+    sequence_length: int = 100
+    history_length: int = 50
+    d_model: int = 64
+    num_layers: int = 2
+    num_heads: int = 4
+    dff: int = 128
+    dropout_rate: float = 0.1
+    context_tokens: int = 4
+    sinkhorn_iterations: int = 20
+    sinkhorn_epsilon: float = 0.1
+    data_dir: Path = Path("data")
+    output_dir: Path = Path("results")
+    max_samples: int | None = None
+
+    def validate(self) -> None:
+        if self.dataset not in {"ihdp", "news"}:
+            raise ValueError(f"Unsupported dataset: {self.dataset}")
+        if not 1 <= self.repetition <= 10:
+            raise ValueError("repetition must be between 1 and 10")
+        if self.sequence_length < 2 or self.sequence_length > 100:
+            raise ValueError("sequence_length must be between 2 and 100")
+        if not 1 <= self.history_length < self.sequence_length:
+            raise ValueError("history_length must be smaller than sequence_length")
+        if self.d_model % self.num_heads:
+            raise ValueError("d_model must be divisible by num_heads")
+        if self.epochs < 1 or self.batch_size < 1:
+            raise ValueError("epochs and batch_size must be positive")
+
+    def to_dict(self) -> dict[str, Any]:
+        result = asdict(self)
+        result["data_dir"] = str(self.data_dir)
+        result["output_dir"] = str(self.output_dir)
+        return result

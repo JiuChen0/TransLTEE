@@ -1,190 +1,203 @@
-import tensorflow as tf
-from models import MyModel  # Please replace with your actual model
-from config import Config
+"""Command-line entry point for deterministic TransLTEE experiments."""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
 import numpy as np
-from data import get_dataloader
-import logging
-import random
-import time
+import tensorflow as tf
+
+from .config import ExperimentConfig
+from .data import (
+    fit_normalization,
+    load_dataset,
+    split_indices,
+    stratified_subsample,
+)
+from .models import TransLTEE
+from .train import evaluate_model, train_model
+from .utils import set_global_seed, write_json
 
 
-# Create a logger object.
-logger = logging.getLogger(__name__)
-
-# Set the log level to INFO.
-logger.setLevel(logging.INFO)
-
-# Create a console handler.
-handler = logging.StreamHandler()
-
-# Add the handler to the logger.
-logger.addHandler(handler)
-
-def main():
-    # Create a configuration object
-    logger.info('CREATING CONFIG OBJECT...')
-    config = Config()
-    logger.info('CONFIG OBJECT SUCCESSFULLY CREATED!')
-
-    # Create the model
-    logger.info('BUILDING MODELS...')
-    model = MyModel(config.input_dim)
-    logger.info('MODELS SUCCESSFULLY BUILT!')
-
-    # Load and process the data
-    t0=50
-
-    # for j in range(1, 11):
-
-    TY = np.loadtxt('./data/IHDP/csv/ihdp_npci_' + "1" + '.csv', delimiter=',')
-    matrix = TY[:, 5:]
-    N = TY.shape[0]
-
-    out_treat = np.loadtxt('./data/IHDP/Series_y_' + "1" + '.txt', delimiter=',')
-    ts = out_treat[:, 0]
-    ts = np.reshape(ts, (N, 1))
-    # ys = np.concatenate((out_treat[:, 1:(t0 + 1)], out_treat[:, -1].reshape(N, 1)), axis=1)
-    ys = out_treat[:, 1:(t0 + 2)]
-
-    groundtruth0 = np.loadtxt('./data/IHDP/Series_groundtruth_' + '1' + '.txt')
-    groundtruth0 = np.reshape(groundtruth0[:t0], (t0, 1))
-    print(groundtruth0.shape)
-
-    from sklearn.model_selection import train_test_split
-
-    matrix_rep = np.repeat(matrix[:, np.newaxis, :], t0, axis=1)
-    X_train, X_test, y_train, y_test, t_train, t_test = train_test_split(matrix_rep, ys, ts, test_size=0.2)
-
-    n_train, n_test = X_train.shape[0], X_test.shape[0]
-
-    print(np.shape(X_train), np.shape(X_test), np.shape(y_train), np.shape(y_test), np.shape(t_train), np.shape(t_test))
-
-    input_x = tf.convert_to_tensor(X_train.reshape(-1, 25))
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SCALAR_METRICS = (
+    "factual_mae",
+    "factual_rmse",
+    "ate_mae",
+    "ate_rmse",
+    "short_term_causal_effect_sign_accuracy",
+    "long_term_causal_effect_sign_accuracy",
+)
 
 
-    # print(tar_train.shape, tar_real.shape)
-
-    # t_train = tf.expand_dims(t_train,-1)
-    # t_test = tf.expand_dims(t_test,-1)
-
-    # print(np.shape(tar_train))
-
-    # Compile the model with the optimizer and loss function
-    logger.info('COMPILING MODEL WITH THE OPTIMIZER AND LOSS FUNCTION...')
-    # model.compile(optimizer=config.optimizer, 
-    #               loss=tf.keras.losses.CategoricalCrossentropy(), 
-    #               metrics=['accuracy'])
-    logger.info('OPTIMIZER AND LOSS FUNCTION SUCCESSFULLY COMPILED')
-
-    # Train the model
-    logger.info('TRAINING MODEL...')
-    #get phi(X), surrogate representation
-    # regularizer = tf.keras.regularizers.l2(l2=1.0)
-    # phi_X_train = tf.keras.layers.Dense(config.dim_in, activation='relu', kernel_regularizer=regularizer)(X_train)
-    # print(phi_X_train)
-
-
-    ## Gradient Descent
-    optimizer = config.optimizer
-    train_loss = tf.keras.metrics.Mean(name='train_loss')
-    train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
-
-    def train_step(X_train, t0, t_train, tar_train, tar_real, groundtruth, gama = config.gama):
-
-        with tf.GradientTape() as tape:
-            predictions, predict_error, distance = model(
-                X_train, t0, t_train, tar_train, tar_real,
-                training = True,
-                )
-            
-            CF_predictions, _, _ = model(
-                X_train, t0, (1-t_train), tar_train, tar_real,
-                training = True,
-                )
-            # loss_groundtruth = train_loss(abs(CF_predictions), groundtruth)
-            # loss = predict_error + loss_groundtruth + gama*distance
-            pred_effect = tf.reduce_mean(abs(predict_error-CF_predictions),axis=0)
-            # print(pred_effect)
-            loss = predict_error + gama*distance
-
-        gradients = tape.gradient(loss, model.trainable_variables)    
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
-        train_loss(loss)
-        # train_accuracy(pred_effect, groundtruth)
-        train_accuracy(tar_real, predictions)
-        # print([CF_predictions])
-
-## Training
-    for epoch in range(config.epochs):
-        train_loss.reset_states()
-        train_accuracy.reset_states()
-        start = time.time()
-
-        # Let's split the data into batches
-        num_batches = n_train // config.batch_size
-        for batch_idx in range(num_batches):
-            start_idx = batch_idx * config.batch_size
-            end_idx = start_idx + config.batch_size
-
-            x_batch = X_train[start_idx:end_idx, :, :]
-            t_batch = t_train[start_idx:end_idx, :]
-            y_batch = y_train[start_idx:end_idx, :]
-            tar_batch = tf.expand_dims(y_batch[:,:-1],-1)
-            tar_real_batch = tf.expand_dims(y_batch[:, 1:],-1)
-
-            train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, groundtruth0, gama=0.01)
-
-        # If there are any remaining samples, pack them into a mini-batch and use them for training
-        if n_train % config.batch_size != 0:
-            start_idx = num_batches * config.batch_size
-            x_batch = X_train[start_idx:, :, :]
-            t_batch = t_train[start_idx:, :]
-            y_batch = y_train[start_idx:, :]
-            tar_batch = tf.expand_dims(y_batch[:,:-1],-1)
-            tar_real_batch = tf.expand_dims(y_batch[:, 1:],-1)
-
-            train_step(x_batch, t0, t_batch, tar_batch, tar_real_batch, groundtruth0, gama=0.01)
-
-        # Timing and printing happens here after each epoch
-        epoch_time = time.time() - start
-        print(f'Epoch {epoch + 1} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
-        print(f'Time taken for 1 epoch: {epoch_time:.2f} secs\n')
-
-    # output = model(
-    # X_train, t0, t_train, tar_train, tar_real,
-    # training = True,
-    # )
-    # print(f"Model Output: {output}")
-
-    # pred_y = output[4]
-    # pred_y = tf.squeeze(pred_y)
-    # tar_real = tf.squeeze(tar_real)
-    # tar_real = tf.cast(tar_real,tf.float32)
-    # # print(pred_y)
-    # print(pred_y.shape, tar_real.shape,pred_y.dtype, tar_real.dtype)
-    # # print(tf.subtract(pred_y,tar_real))
-    # pred_error = tf.reduce_mean(tf.square(pred_y - tar_real))
-    # print(pred_error,pred_error.shape)
-
-    # encoded = model(
-    # phi_X_train,
-    # training = True,
-    # )
-    # decoded = model(
-    # phi_X_train,
-    # training = True,
-    # )
-    # print(f"Encoder Output: {encoded}")
-    # print(f"Decoder Output: {decoded}")
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Train and evaluate the double-head TransLTEE model."
+    )
+    parser.add_argument("--dataset", choices=("ihdp", "news", "both"), default="ihdp")
+    parser.add_argument("--repetition", type=int, default=1)
+    parser.add_argument(
+        "--repetitions",
+        type=int,
+        default=1,
+        help="Number of consecutive realizations, starting at --repetition.",
+    )
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--gamma", type=float, default=1e-6)
+    parser.add_argument("--weight-decay", type=float, default=1e-6)
+    parser.add_argument("--sequence-length", type=int, default=100)
+    parser.add_argument("--history-length", type=int, default=50)
+    parser.add_argument("--d-model", type=int, default=64)
+    parser.add_argument("--num-layers", type=int, default=2)
+    parser.add_argument("--num-heads", type=int, default=4)
+    parser.add_argument("--dff", type=int, default=128)
+    parser.add_argument("--dropout-rate", type=float, default=0.1)
+    parser.add_argument("--context-tokens", type=int, default=4)
+    parser.add_argument("--sinkhorn-iterations", type=int, default=20)
+    parser.add_argument("--sinkhorn-epsilon", type=float, default=0.1)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--data-dir", type=Path, default=PROJECT_ROOT / "data")
+    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "results")
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=None,
+        help="Treatment-stratified subset for fast smoke tests.",
+    )
+    return parser.parse_args()
 
 
-    logger.info('MODEL SUCCESSFULLY TRAINED!')
+def run_experiment(config: ExperimentConfig) -> dict[str, object]:
+    config.validate()
+    run_seed = config.seed + config.repetition
+    tf.keras.backend.clear_session()
+    set_global_seed(run_seed)
+    bundle = load_dataset(
+        config.dataset,
+        config.data_dir,
+        repetition=config.repetition,
+        sequence_length=config.sequence_length,
+    )
+    bundle = stratified_subsample(bundle, config.max_samples, run_seed)
+    split = split_indices(bundle.treatment, run_seed)
+    normalization = fit_normalization(bundle, split.train)
 
-    # Save the model
-    # logger.info('SAVING MODEL...')
-    # model.save(f'{config.save_dir}/model')
-    # logger.info('MODEL SUCCESSFULLY SAVED!')
+    model = TransLTEE(
+        d_model=config.d_model,
+        num_layers=config.num_layers,
+        num_heads=config.num_heads,
+        dff=config.dff,
+        dropout_rate=config.dropout_rate,
+        context_tokens=config.context_tokens,
+        max_sequence_length=config.sequence_length,
+        weight_decay=config.weight_decay,
+    )
+    history = train_model(model, bundle, split, normalization, config)
+    metrics, predictions = evaluate_model(model, bundle, split, normalization, config)
 
-if __name__ == '__main__':
+    run_name = f"{config.dataset}_rep{config.repetition}_seed{run_seed}"
+    run_directory = config.output_dir / run_name
+    payload: dict[str, object] = {
+        "config": config.to_dict(),
+        "split_sizes": {
+            "train": int(split.train.size),
+            "validation": int(split.validation.size),
+            "test": int(split.test.size),
+        },
+        "history": {
+            "train_loss": history.train_loss,
+            "validation_mse": history.validation_mse,
+        },
+        "metrics": metrics,
+    }
+    write_json(run_directory / "metrics.json", payload)
+    run_directory.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(run_directory / "predictions.npz", **predictions)
+    model.save_weights(run_directory / "model.weights.h5")
+
+    print(
+        f"{run_name}: factual_rmse={metrics['factual_rmse']:.4f} "
+        f"ate_mae={metrics['ate_mae']:.4f}"
+    )
+    return payload
+
+
+def aggregate_runs(summaries: list[dict[str, object]]) -> dict[str, object]:
+    """Compute per-dataset mean and standard deviation across realizations."""
+    aggregate: dict[str, object] = {}
+    dataset_names = sorted(
+        {str(summary["config"]["dataset"]) for summary in summaries}  # type: ignore[index]
+    )
+    for dataset in dataset_names:
+        dataset_runs = [
+            summary
+            for summary in summaries
+            if summary["config"]["dataset"] == dataset  # type: ignore[index]
+        ]
+        aggregate[dataset] = {
+            metric: {
+                "mean": float(
+                    np.mean([run["metrics"][metric] for run in dataset_runs])  # type: ignore[index]
+                ),
+                "std": float(
+                    np.std([run["metrics"][metric] for run in dataset_runs])  # type: ignore[index]
+                ),
+            }
+            for metric in SCALAR_METRICS
+        }
+    return aggregate
+
+
+def main() -> None:
+    arguments = parse_arguments()
+    datasets = ("ihdp", "news") if arguments.dataset == "both" else (arguments.dataset,)
+    end_repetition = arguments.repetition + arguments.repetitions
+    if arguments.repetition < 1 or end_repetition > 11:
+        raise ValueError(
+            "Requested repetitions must stay within the committed range 1..10"
+        )
+
+    summaries = []
+    for dataset in datasets:
+        for repetition in range(arguments.repetition, end_repetition):
+            config = ExperimentConfig(
+                dataset=dataset,
+                repetition=repetition,
+                seed=arguments.seed,
+                epochs=arguments.epochs,
+                batch_size=arguments.batch_size,
+                learning_rate=arguments.learning_rate,
+                gamma=arguments.gamma,
+                weight_decay=arguments.weight_decay,
+                sequence_length=arguments.sequence_length,
+                history_length=arguments.history_length,
+                d_model=arguments.d_model,
+                num_layers=arguments.num_layers,
+                num_heads=arguments.num_heads,
+                dff=arguments.dff,
+                dropout_rate=arguments.dropout_rate,
+                context_tokens=arguments.context_tokens,
+                sinkhorn_iterations=arguments.sinkhorn_iterations,
+                sinkhorn_epsilon=arguments.sinkhorn_epsilon,
+                data_dir=arguments.data_dir,
+                output_dir=arguments.output_dir,
+                max_samples=arguments.max_samples,
+            )
+            summaries.append(run_experiment(config))
+
+    aggregate_path = arguments.output_dir / "summary.json"
+    write_json(
+        aggregate_path,
+        {
+            "aggregate": aggregate_runs(summaries),
+            "runs": summaries,
+        },
+    )
+    print(f"Wrote experiment summary to {aggregate_path}")
+
+
+if __name__ == "__main__":
     main()
